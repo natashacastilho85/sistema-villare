@@ -1164,10 +1164,9 @@ async function initApp() {
   } catch(e) {
     console.error('Erro ao carregar dados:', e);
   }
-  // Limpa localStorage de dados de demonstração e precificação antiga
-  localStorage.removeItem('villare-prec');
-  localStorage.removeItem('villare-mat-globais');
-  localStorage.removeItem('villare-notif');
+ // Carrega materiais e precificação do Supabase
+  await carregarMatGlobaisSupabase();
+  await carregarPrecSupabase();
   hideLoading();
   renderAll();
   // Ativa push notifications em background
@@ -2598,17 +2597,22 @@ const ITENS_EXTRAS = [
 // Armazena dados de precificação por peça (em memória + localStorage)
 let precDados = {};
 
-function carregarPrecDados() {
+async function carregarPrecSupabase() {
   try {
-    const s = localStorage.getItem('villare-prec');
-    if (s) precDados = JSON.parse(s);
+    const r = await sbFetch('configuracoes?chave=eq.prec-dados');
+    const data = await r.json();
+    if (data && data[0] && data[0].valor) precDados = data[0].valor;
   } catch(e) {}
 }
-carregarPrecDados();
 
-
-function salvarPrecLocal() {
-  localStorage.setItem('villare-prec', JSON.stringify(precDados));
+async function salvarPrecLocal() {
+  try {
+    await sbFetch('configuracoes', {
+      method: 'POST',
+      headers: { 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify({ chave: 'prec-dados', valor: precDados })
+    });
+  } catch(e) {}
 }
 
 function getPrecPeca(pecaId) {
@@ -3182,16 +3186,22 @@ let matEditandoId = null;
 let matModalPecaId = null;
 let matModalSelId = null; // id do material global selecionado no modal
 
-function carregarMatGlobais() {
+async function carregarMatGlobaisSupabase() {
   try {
-    const s = localStorage.getItem('villare-mat-globais');
-    if (s) matGlobais = JSON.parse(s);
+    const r = await sbFetch('configuracoes?chave=eq.mat-globais');
+    const data = await r.json();
+    if (data && data[0] && data[0].valor) matGlobais = data[0].valor;
   } catch(e) {}
 }
-carregarMatGlobais();
 
-function salvarMatGlobais() {
-  localStorage.setItem('villare-mat-globais', JSON.stringify(matGlobais));
+async function salvarMatGlobais() {
+  try {
+    await sbFetch('configuracoes', {
+      method: 'POST',
+      headers: { 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify({ chave: 'mat-globais', valor: matGlobais })
+    });
+  } catch(e) {}
 }
 
 function custoPorUnidade(m) {

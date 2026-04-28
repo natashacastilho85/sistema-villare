@@ -2652,7 +2652,20 @@ function calcPrec(materiais, lucro, salario, custoFixoHora) {
   const precoBase = margemLucro < 1 ? custoTotalReal / (1 - margemLucro) : custoTotalReal * 2;
   const tarifaCartao = getTarifaCartao();
   const precoCartao = precoBase / (1 - tarifaCartao);
-  return { custoMat, custoTotalReal, precoBase, precoCartao };
+
+  // Lógica para cravar sempre no 7 (122 vira 127, 128 vira 127)
+  function paraFinal7(valor) {
+    if (!valor || valor <= 0) return 0;
+    // Pega a dezena inteira (ex: 128 / 10 = 12.8 -> vira 12) e adiciona o 7
+    return Math.floor(valor / 10) * 10 + 7;
+  }
+
+  return { 
+    custoMat, 
+    custoTotalReal, 
+    precoBase: paraFinal7(precoBase), 
+    precoCartao: paraFinal7(precoCartao) 
+  };
 }
 
 function openPrecificacao() {

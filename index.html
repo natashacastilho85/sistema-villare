@@ -2873,15 +2873,17 @@ function _renderPrecBody() {
     return;
   }
 
-  // Resumo no topo — ordenado por preço
-  const resumoOrdenado = pecas.map(p => {
-    const d = getPrecPeca(p.id);
-    const mins = d.tempo || getTotalProcessosMins() || 60;
-    const sal = valorHora * (mins / 60);
-    const cf  = custoFixoHora * (mins / 60);
-    const r = calcPrec(d.materiais, d.lucro, sal, cf);
-    return { nome: p.nome, precoCartao: r.precoCartao, precoBase: r.precoBase };
-  }).sort((a, b) => a.precoCartao - b.precoCartao);
+  // Resumo no topo — ordenado por preço (filtrando as que não vão pro catálogo)
+  const resumoOrdenado = pecas
+    .filter(p => getPrecPeca(p.id).exibirCatalogo !== false)
+    .map(p => {
+      const d = getPrecPeca(p.id);
+      const mins = d.tempo || getTotalProcessosMins() || 60;
+      const sal = valorHora * (mins / 60);
+      const cf  = custoFixoHora * (mins / 60);
+      const r = calcPrec(d.materiais, d.lucro, sal, cf);
+      return { nome: p.nome, precoCartao: r.precoCartao, precoBase: r.precoBase };
+    }).sort((a, b) => a.precoCartao - b.precoCartao);
 
   // Busca rápida no topo: digita parte do nome → rola até a peça
   let html = `<div class="prec-busca-wrap">
@@ -3213,8 +3215,18 @@ function toggleExibirCatalogo(pecaId, exibir) {
   if (d) {
     d.exibirCatalogo = exibir;
     salvarPrecLocal();
-    renderCatalogo(); // Atualiza a tela do catálogo
-    renderPecas();    // Atualiza a tela de precificação para a checkbox responder visualmente
+    renderCatalogo();
+    
+    // Guarda a posição do scroll atual para a tela não pular
+    const drawer = document.querySelector('#drawer-prec .drawer');
+    const scrollPos = drawer ? drawer.scrollTop : 0;
+    
+    // Atualiza a tela de precificação para o resumo no topo refletir a mudança
+    _renderPrecBody();
+    
+    // Devolve o scroll pra onde você estava
+    const drawerAposRender = document.querySelector('#drawer-prec .drawer');
+    if (drawerAposRender) drawerAposRender.scrollTop = scrollPos;
   }
 }
   

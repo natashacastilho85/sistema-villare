@@ -1505,7 +1505,17 @@ function getPrecoPecaCalculado(pecaId) {
   const mins = d.tempo || getTotalProcessosMins() || 60;
   const sal = getValorHora() * (mins / 60);
   const cf  = getCustoFixoPorHora() * (mins / 60);
-  const r = calcPrec(d.materiais, d.lucro, sal, cf);
+
+  // CORREÇÃO: Incluindo a perda de resina no cálculo global
+  const perdaResina = (d.perdaResina ?? 5) / 100;
+  const materiaisComPerda = d.materiais.map(m => {
+    if ((m.nome || '').toLowerCase().includes('resina') && perdaResina > 0) {
+      return { ...m, valor: (parseFloat(m.valor) || 0) * (1 + perdaResina) };
+    }
+    return m;
+  });
+
+  const r = calcPrec(materiaisComPerda, d.lucro, sal, cf);
   return r.precoCartao > 0 ? r.precoCartao : null;
 }
 

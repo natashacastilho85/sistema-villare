@@ -1013,9 +1013,9 @@ function mapContrato(r) {
     desconto:parseFloat(r.desconto)||0,
     telefone:r.telefone||'',
     pecas: Array.isArray(r.pecas) ? r.pecas : [],
-    pagamentos: Array.isArray(r.pagamentos) ? r.pagamentos : [] 
+    pagamentos: Array.isArray(r.pagamentos) ? r.pagamentos : [],
     ficha_producao: r.ficha_producao || {}
-     };
+  };
 }
 
 // Total que a NOIVA já pagou (bruto). Usado pra calcular saldo a receber.

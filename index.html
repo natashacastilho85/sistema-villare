@@ -1013,7 +1013,9 @@ function mapContrato(r) {
     desconto:parseFloat(r.desconto)||0,
     telefone:r.telefone||'',
     pecas: Array.isArray(r.pecas) ? r.pecas : [],
-    pagamentos: Array.isArray(r.pagamentos) ? r.pagamentos : [] };
+    pagamentos: Array.isArray(r.pagamentos) ? r.pagamentos : [] 
+    ficha_producao: r.ficha_producao || {}
+     };
 }
 
 // Total que a NOIVA já pagou (bruto). Usado pra calcular saldo a receber.
@@ -2259,6 +2261,9 @@ function openDetail(id) {
     </div>
     ${linkWaBtn?`<a href="${linkWaBtn}" style="display:block;width:100%;box-sizing:border-box;background:#25D366;border:none;border-radius:4px;padding:0.9rem;color:white;font-family:'Calibri',sans-serif;font-size:0.78rem;font-weight:500;letter-spacing:0.2em;text-transform:uppercase;cursor:pointer;margin-top:0.5rem;text-align:center;text-decoration:none">💬 Abrir WhatsApp Business</a>`:''}
     <button class="btn-primary" style="background:rgba(184,134,42,0.1);color:var(--brown);border:1px solid rgba(184,134,42,0.3);margin-top:0.4rem" onclick="abrirEdicaoContrato(${c.id})">Editar contrato</button>
+    
+    <button class="btn-primary" style="background:rgba(107,143,113,0.1);color:var(--sage);border:1px solid rgba(107,143,113,0.3);margin-top:0.4rem" onclick="abrirFichaProducao(${c.id})">🖨️ Ficha de Produção</button>
+    
     <button class="btn-secondary" onclick="fecharDetalheContrato()">Fechar</button>`;
   openDrawer('drawer-detail');
 }
@@ -3549,6 +3554,180 @@ function salvarTodasPrecificacoes() {
   if (btn) { const orig = btn.textContent; btn.textContent = '✓ Salvo!'; setTimeout(() => btn.textContent = orig, 1500); }
 }
 
+// ── FICHA DE PRODUÇÃO ──
+let fichaContratoId = null;
+
+function abrirFichaProducao(id) {
+  const c = contratos.find(x => x.id === id);
+  if (!c) return;
+  fichaContratoId = id;
+  const f = c.ficha_producao || {};
+
+  // Cria o drawer da ficha dinamicamente na tela
+  let drawer = document.getElementById('drawer-ficha');
+  if (!drawer) {
+    drawer = document.createElement('div');
+    drawer.id = 'drawer-ficha';
+    drawer.className = 'drawer-overlay';
+    document.body.appendChild(drawer);
+  }
+
+  // Gera os campos das peças para você digitar as observações de cada uma
+  let pecasHtml = c.pecas.map((p, i) => `
+    <div style="margin-bottom:0.8rem">
+      <label style="font-size:0.75rem;color:var(--dark);font-weight:600">${p.qtd}x ${p.nome}</label>
+      <input type="text" class="field-input" id="f-obs-${i}" value="${f.obsPecas && f.obsPecas[p.nome] ? f.obsPecas[p.nome] : ''}" placeholder="Detalhes, cores, flores específicas..." style="padding:0.5rem;font-size:0.8rem;margin-top:0.2rem">
+    </div>
+  `).join('');
+
+  drawer.innerHTML = `
+    <div class="drawer">
+      <div class="drawer-header">
+        <div class="drawer-title">Ficha de Produção</div>
+        <button class="drawer-close" onclick="closeDrawer('drawer-ficha')">×</button>
+      </div>
+      <div class="drawer-content" style="padding:1.5rem">
+        <div class="field-group"><label class="field-label">Nome da Noiva</label><input type="text" id="f-noiva" class="field-input" value="${f.nomeNoiva || ''}"></div>
+        <div class="field-group"><label class="field-label">Nome do Noivo</label><input type="text" id="f-noivo" class="field-input" value="${f.nomeNoivo || ''}"></div>
+        <div class="field-group"><label class="field-label">Instagram da Noiva</label><input type="text" id="f-insta" class="field-input" value="${f.instagram || ''}"></div>
+        <div class="field-group"><label class="field-label">Quem fez o buquê?</label><input type="text" id="f-buque" class="field-input" value="${f.quemFezBuque || ''}"></div>
+        <div class="field-group"><label class="field-label">Quem indicou?</label><input type="text" id="f-indicou" class="field-input" value="${f.quemIndicou || ''}"></div>
+        <div class="field-group"><label class="field-label">Cerimonialista</label><input type="text" id="f-cerimonialista" class="field-input" value="${f.cerimonialista || ''}"></div>
+        
+        <div style="display:flex;gap:1rem;margin-bottom:1rem">
+          <div class="field-group" style="flex:1">
+            <label class="field-label">Iniciais e Data?</label>
+            <select id="f-iniciais" class="field-input">
+              <option value="Não" ${f.iniciaisData === 'Não' ? 'selected' : ''}>Não</option>
+              <option value="Sim" ${f.iniciaisData === 'Sim' ? 'selected' : ''}>Sim</option>
+            </select>
+          </div>
+          <div class="field-group" style="flex:1">
+            <label class="field-label">Espelho Presente?</label>
+            <select id="f-espelho" class="field-input">
+              <option value="Não" ${f.espelhoPresente === 'Não' ? 'selected' : ''}>Não</option>
+              <option value="Sim" ${f.espelhoPresente === 'Sim' ? 'selected' : ''}>Sim</option>
+            </select>
+          </div>
+        </div>
+        
+        <div style="margin-bottom:1.5rem;padding-top:1rem;border-top:1px solid rgba(0,0,0,0.08)">
+          <div class="field-label" style="margin-bottom:0.5rem">Observações das Peças Contratadas</div>
+          ${pecasHtml}
+        </div>
+
+        <button class="btn-primary" onclick="salvarEImprimirFicha()">Salvar e Imprimir</button>
+      </div>
+    </div>
+  `;
+  closeDrawer('drawer-detail');
+  openDrawer('drawer-ficha');
+}
+
+async function salvarEImprimirFicha() {
+  const c = contratos.find(x => x.id === fichaContratoId);
+  if (!c) return;
+
+  const f = {
+    nomeNoiva: document.getElementById('f-noiva').value,
+    nomeNoivo: document.getElementById('f-noivo').value,
+    instagram: document.getElementById('f-insta').value,
+    quemFezBuque: document.getElementById('f-buque').value,
+    quemIndicou: document.getElementById('f-indicou').value,
+    cerimonialista: document.getElementById('f-cerimonialista').value,
+    iniciaisData: document.getElementById('f-iniciais').value,
+    espelhoPresente: document.getElementById('f-espelho').value,
+    obsPecas: {}
+  };
+
+  c.pecas.forEach((p, i) => {
+    const obs = document.getElementById('f-obs-'+i).value;
+    if (obs) f.obsPecas[p.nome] = obs;
+  });
+
+  try {
+    const [r] = await sbUpdate('contratos', c.id, { ficha_producao: f });
+    c.ficha_producao = f;
+    gerarImpressaoFicha(c, f);
+  } catch(e) {
+    alert('Erro! Verifique se você criou a coluna "ficha_producao" no Supabase. Erro: ' + e.message);
+  }
+}
+
+function gerarImpressaoFicha(c, f) {
+  const w = window.open('', '_blank');
+  const dataCas = c.casamento ? c.casamento.split('-').reverse().join('/') : '';
+  const valorFmt = 'R$ ' + c.valorBruto.toLocaleString('pt-BR', {minimumFractionDigits:2});
+  
+  const pecasHtml = c.pecas.map(p => {
+     const obs = f.obsPecas[p.nome] || 'Nenhuma observação específica.';
+     return `<div style="margin-bottom: 12px; padding: 10px; background: #fdfcfb; border: 1px solid #eaeaea; border-radius: 4px;">
+       <strong style="color: #4A3320;">${p.qtd}x ${p.nome}</strong><br>
+       <span style="font-size: 14px; color: #555;">Info: ${obs}</span>
+     </div>`;
+  }).join('');
+
+  const html = `
+    <html>
+    <head>
+      <title>Ficha de Produção - ${c.nome}</title>
+      <style>
+        body { font-family: 'Calibri', sans-serif; color: #333; line-height: 1.5; margin: 0; padding: 30px; }
+        .header { text-align: center; border-bottom: 2px solid #B8862A; padding-bottom: 15px; margin-bottom: 25px; }
+        .header h1 { margin: 0; font-size: 26px; color: #4A3320; }
+        .header p { margin: 5px 0 0; font-size: 13px; color: #777; text-transform: uppercase; letter-spacing: 3px; }
+        .row { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 10px 0; font-size: 15px; }
+        .label { font-weight: 600; width: 35%; color: #4A3320; }
+        .value { width: 65%; color: #222; }
+        .highlight-box { display: flex; justify-content: space-between; margin: 20px 0; }
+        .h-item { width: 48%; background: #faf9f7; padding: 12px; text-align: center; border: 1px solid #e8e3dc; border-radius: 5px; }
+        
+        /* Regra exclusiva para a impressora: adiciona o espaço da prancheta no topo */
+        @media print { 
+          @page { margin: 0; }
+          body { padding: 90px 20px 20px 20px !important; } 
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>Villare Atelier</h1>
+        <p>Ficha de Produção Interna</p>
+      </div>
+      
+      <div class="row"><div class="label">Contratante (Contrato)</div><div class="value">${c.nome}</div></div>
+      <div class="row"><div class="label">Noiva(o)s</div><div class="value">${f.nomeNoiva || '—'} & ${f.nomeNoivo || '—'}</div></div>
+      <div class="row"><div class="label">Data do Casamento</div><div class="value">${dataCas}</div></div>
+      <div class="row"><div class="label">Cidade/UF</div><div class="value">${c.cidade} / ${c.estado}</div></div>
+      <div class="row"><div class="label">Instagram</div><div class="value">${f.instagram || '—'}</div></div>
+      <div class="row"><div class="label">Cerimonialista</div><div class="value">${f.cerimonialista || '—'}</div></div>
+      <div class="row"><div class="label">Quem fez o buquê?</div><div class="value">${f.quemFezBuque || '—'}</div></div>
+      <div class="row"><div class="label">Quem indicou?</div><div class="value">${f.quemIndicou || '—'}</div></div>
+
+      <div class="highlight-box">
+        <div class="h-item"><strong>Iniciais e Data:</strong><br> <span style="font-size: 20px; color: #4A3320;">${f.iniciaisData}</span></div>
+        <div class="h-item"><strong>Espelho Presente:</strong><br> <span style="font-size: 20px; color: #4A3320;">${f.espelhoPresente}</span></div>
+      </div>
+
+      <h3 style="color: #4A3320; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-top: 30px;">Peças Escolhidas</h3>
+      ${pecasHtml}
+
+      <div class="row" style="margin-top: 20px; border-top: 2px solid #eee;"><div class="label">Valor Total Fechado</div><div class="value"><strong style="font-size:18px">${valorFmt}</strong></div></div>
+      
+      <div style="margin-top: 40px; padding-top: 15px;">
+        <p style="font-weight: 600; color: #4A3320;">Anotações Livres da Produção:</p>
+        <div style="height: 120px; border: 1px dashed #B8862A; border-radius: 4px; background: #faf9f7;"></div>
+      </div>
+    </body>
+    <script>
+      window.onload = function() { setTimeout(function() { window.print(); }, 500); }
+    </script>
+    </html>
+  `;
+  w.document.write(html);
+  w.document.close();
+}
+  
 initApp();
 
 // ── NOTIFICAÇÕES ──

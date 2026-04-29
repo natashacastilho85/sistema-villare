@@ -3109,7 +3109,7 @@ function renderPrecCard(p, d, valorHora, custoFixoHora, cardIdx) {
       <label>Simular: se vender por R$</label>
       <div class="prec-simul-row">
         <input class="prec-simul-input" type="number" step="1" placeholder="ex: 1200"
-        oninput="simularLucro(${p.id}, this.value, ${r.custoTotalReal.toFixed(2)}, ${r.precoCartao.toFixed(2)})">
+        oninput="simularLucro(${p.id}, this.value, ${r.custoTotalReal.toFixed(2)})"
         <span class="prec-simul-result" id="prec-simul-res-${p.id}">← digite o valor</span>
       </div>
     </div>
@@ -3268,22 +3268,35 @@ function toggleExibirCatalogo(pecaId, exibir) {
   }
 }
   
-function simularLucro(pecaId, valorVenda, custoTotalReal, precoCartao) {
+function simularLucro(pecaId, valorVenda, custoTotalReal) {
   const el = document.getElementById('prec-simul-res-' + pecaId);
   if (!el) return;
+  
   const venda = parseFloat(valorVenda);
-  if (!venda || venda <= 0) { el.innerHTML = '← digite o valor'; return; }
-  const tarifaCartao = getTarifaCartao();
-  // Preço base simulado (sem tarifa do cartão)
-  const precoBaseSimulado = venda * (1 - tarifaCartao);
-  // Margem que você precisaria colocar no campo para chegar nesse preço com cartão
-  const margemNecessaria = custoTotalReal > 0 ? (1 - custoTotalReal / precoBaseSimulado) * 100 : 0;
-  const lucroValor = precoBaseSimulado - custoTotalReal;
-  const fmt = v => 'R$ ' + Math.abs(v).toLocaleString('pt-BR', {minimumFractionDigits:2,maximumFractionDigits:2});
-  const cor = margemNecessaria >= 0 ? 'var(--sage)' : 'var(--bordeaux)';
-  const abaixoCartao = venda < precoCartao
-    ? ` <span style="font-size:0.7rem;color:var(--bordeaux)">⚠ abaixo do preço cartão</span>` : '';
-  el.innerHTML = `<span style="color:${cor}"><strong>${margemNecessaria.toFixed(1)}% de margem</strong> · lucro ${fmt(lucroValor)}</span>${abaixoCartao}`;
+  if (!venda || venda <= 0) { 
+    el.innerHTML = '← digite o valor'; 
+    return; 
+  }
+
+  // 1. Pegamos a tarifa real que está configurada no seu sistema
+  const tarifaCartao = getTarifaCartao(); 
+  
+  // 2. Calculamos quanto sobra DE VERDADE depois que o banco tira a parte dele
+  const valorLiquidoNoCaixa = venda * (1 - tarifaCartao);
+  
+  // 3. O lucro em reais é o que sobra menos o custo total
+  const lucroValor = valorLiquidoNoCaixa - custoTotalReal;
+  
+  // 4. A margem real é a porcentagem desse lucro sobre o que entrou no caixa
+  const margemReal = (lucroValor / valorLiquidoNoCaixa) * 100;
+
+  const fmt = v => 'R$ ' + Math.abs(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const cor = lucroValor >= 0 ? 'var(--sage)' : 'var(--bordeaux)';
+
+  // O aviso de "abaixo" agora só aparece se o lucro for negativo (prejuízo)
+  const avisoPrejuizo = lucroValor < 0 ? ` <span style="font-size:0.7rem;color:var(--bordeaux)">⚠ Prejuízo!</span>` : '';
+
+  el.innerHTML = `<span style="color:${cor}"><strong>${margemReal.toFixed(1)}% de margem real</strong> · lucro ${fmt(lucroValor)}</span>${avisoPrejuizo}`;
 }
 
 // ── MATERIAIS GLOBAIS ──

@@ -2319,6 +2319,15 @@ function abrirEdicaoContrato(id) {
 
   closeDrawer('drawer-detail');
   openDrawer('drawer-edit');
+  const f = c.ficha_producao || {};
+  document.getElementById('e-f-noiva').value = f.nomeNoiva || '';
+  document.getElementById('e-f-noivo').value = f.nomeNoivo || '';
+  document.getElementById('e-f-insta').value = f.instagram || '';
+  document.getElementById('e-f-cerimonial').value = f.cerimonialista || '';
+  document.getElementById('e-f-indicacao').value = f.quemIndicou || '';
+  document.getElementById('e-f-iniciais').value = f.iniciaisData || 'Não';
+  document.getElementById('e-f-espelho').value = f.espelhoPresente || 'Não';
+  document.getElementById('e-f-obs-geral').value = f.obsGeral || '';
 }
 
 function adicionarLinhaPecaEdit() {
@@ -2345,104 +2354,57 @@ function onFormaPagEditChange(val) {
 }
 
 async function saveEditContrato() {
-  if (!contratoEditandoId) return;
   const c = contratos.find(x => x.id === contratoEditandoId);
   if (!c) return;
 
-  const nome      = document.getElementById('e-nome').value.trim();
-  const telefone  = document.getElementById('e-telefone').value.trim().replace(/\D/g,'');
-  const casamento = document.getElementById('e-casamento').value;
-  const contrato  = document.getElementById('e-contrato').value;
-  const cidade    = document.getElementById('e-cidade').value.trim();
-  const estado    = document.getElementById('e-estado').value.trim().toUpperCase();
-  const chegada   = document.getElementById('e-chegada').value || null;
-  const entrega   = document.getElementById('e-entrega').value || null;
-  const envio     = document.getElementById('e-envio').value;
-  const status    = document.getElementById('e-status').value;
-  const formaPag  = document.getElementById('e-forma-pag').value;
-  const desconto  = parseFloat(document.getElementById('e-desconto').value) || 0;
+  const dados = {
+    nome: document.getElementById('e-nome').value,
+    telefone: document.getElementById('e-telefone').value,
+    casamento: document.getElementById('e-casamento').value,
+    contrato: document.getElementById('e-contrato').value,
+    cidade: document.getElementById('e-cidade').value,
+    estado: document.getElementById('e-estado').value,
+    chegada: document.getElementById('e-chegada').value || null,
+    entrega: document.getElementById('e-entrega').value || null,
+    envio: document.getElementById('e-envio').value,
+    status: document.getElementById('e-status').value,
+    desconto: parseFloat(document.getElementById('e-desconto').value) || 0
+  };
 
-  if (!nome || !casamento || !contrato) { alert('Preencha nome, data do casamento e data do contrato.'); return; }
-
-  // Coletar peças
   const linhas = document.querySelectorAll('#e-pecas-selecionadas > div');
   const pecasSel = [];
-  let valorBrutoCalc = 0;
+  let valorBruto = 0;
   linhas.forEach(linha => {
     const sel = linha.querySelector('select');
     const qtdEl = linha.querySelector('input[type=number]');
-    if (!sel || !qtdEl) return;
     const pid = parseInt(sel.value);
     const p = pecas.find(x=>x.id===pid);
     if (!p) return;
     const qtd = parseInt(qtdEl.value) || 1;
-    const valorCalculado = getPrecoPecaCalculado(pid) || 0;
-    pecasSel.push({ nome:p.nome, valor:valorCalculado, qtd });
-    valorBrutoCalc += valorCalculado * qtd;
+    const r = getPrecPeca(pid);
+    pecasSel.push({ nome: p.nome, valor: r.precoCartao, qtd });
+    valorBruto += r.precoCartao * qtd;
   });
-  const valorFinal = Math.max(0, valorBrutoCalc - desconto);
+  dados.pecas = pecasSel;
+  dados.valor_bruto = Math.max(0, valorBruto - dados.desconto);
 
-  // ── Recalcular pagamentos ──
-  // Estratégia: separa em iniciais (gerados aqui) e posteriores (registrados via openNovoPagamento)
-  // Para retrocompat, considera "inicial" todo pagamento que foi feito na data do contrato (ou tem flag inicial:true).
-  const pagsExistentes = Array.isArray(c.pagamentos) ? c.pagamentos : [];
-  const dataContratoOrig = c.contrato || casamento;
-  const posteriores = pagsExistentes.filter(p => {
-    if (p.inicial === true) return false;
-    // Heurística pra dados antigos: se a data é a do contrato e é o único, considera inicial
-    if (p.inicial === undefined && p.data === dataContratoOrig && pagsExistentes.length <= 2) return false;
-    return true;
-  });
-
-  // Monta novos iniciais conforme a forma de pagamento atual
-  const novosIniciais = [];
-  const dataPag = contrato || casamento;
-
-  if (formaPag === 'pix' && valorFinal > 0) {
-    const entra = calcEntradaCaixa(valorFinal, 'pix');
-    novosIniciais.push({ data: dataPag, valor: round2(entra), forma: 'Pix', bruto: round2(valorFinal), inicial: true });
-  } else if (formaPag === '3x' && valorFinal > 0) {
-    const entra = calcEntradaCaixa(valorFinal, '3x');
-    novosIniciais.push({ data: dataPag, valor: round2(entra), forma: 'Cartão', parcelas: 3, bruto: round2(valorFinal), inicial: true });
-  } else if (formaPag === '4x' && valorFinal > 0) {
-    const entra = calcEntradaCaixa(valorFinal, '4x');
-    novosIniciais.push({ data: dataPag, valor: round2(entra), forma: 'Cartão', parcelas: 4, bruto: round2(valorFinal), inicial: true });
-  } else if (formaPag === 'reserva') {
-    const entrada = parseFloat(document.getElementById('e-pago').value) || 0;
-    if (entrada > 0) {
-      novosIniciais.push({ data: dataPag, valor: round2(entrada), forma: 'Pix', bruto: round2(entrada), inicial: true });
-    }
-  } else if (formaPag === 'misto') {
-    const valPix = parseFloat(document.getElementById('e-pago-pix').value) || 0;
-    const valCart = parseFloat(document.getElementById('e-pago-cartao').value) || 0;
-    const parc = document.getElementById('e-pago-cartao-parc').value;
-    if (valPix > 0) {
-      const entraPix = calcEntradaCaixa(valPix, 'pix');
-      novosIniciais.push({ data: dataPag, valor: round2(entraPix), forma: 'Pix', bruto: round2(valPix), inicial: true });
-    }
-    if (valCart > 0) {
-      const formaCart = parc === '3' ? '3x' : '4x';
-      const entraCart = calcEntradaCaixa(valCart, formaCart);
-      novosIniciais.push({ data: dataPag, valor: round2(entraCart), forma: 'Cartão', parcelas: parseInt(parc), bruto: round2(valCart), inicial: true });
-    }
-  }
-
-  const novosPagamentos = [...novosIniciais, ...posteriores];
-  const novoPagoCaixa = novosPagamentos.reduce((s,p)=>s+(parseFloat(p.valor)||0), 0);
+  // Coleta os dados da ficha na edição
+  dados.ficha_producao = {
+    nomeNoiva: document.getElementById('e-f-noiva').value,
+    nomeNoivo: document.getElementById('e-f-noivo').value,
+    instagram: document.getElementById('e-f-insta').value,
+    cerimonialista: document.getElementById('e-f-cerimonial').value,
+    quemIndicou: document.getElementById('e-f-indicacao').value,
+    iniciaisData: document.getElementById('e-f-iniciais').value,
+    espelhoPresente: document.getElementById('e-f-espelho').value,
+    obsGeral: document.getElementById('e-f-obs-geral').value
+  };
 
   try {
-    const [r] = await sbUpdate('contratos', contratoEditandoId, {
-      nome, status, casamento, contrato, cidade, estado, envio, telefone,
-      chegada, entrega,
-      forma_pag: formaPag, valor_bruto: valorFinal, desconto, pecas: pecasSel,
-      pagamentos: novosPagamentos, pago: round2(novoPagoCaixa)
-    });
-    Object.assign(c, mapContrato(r));
-    closeDrawer('drawer-edit');
-    contratoEditandoId = null;
-    renderAll();
-    goTabById('contratos');
-  } catch(e) { alert('Erro ao salvar alterações: '+e.message); }
+    await sbUpdate('contratos', contratoEditandoId, dados);
+    fecharEditContrato();
+    await loadData();
+  } catch(e) { alert('Erro ao atualizar: ' + e.message); }
 }
 
 async function excluirContrato() {

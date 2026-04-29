@@ -3175,15 +3175,48 @@ async function duplicarPecaPrec(pecaId) {
   const p = pecas.find(x => x.id === pecaId);
   if (!p) return;
   const novoNome = p.nome + ' (cópia)';
+  
   try {
-    const nova = await sbInsert('pecas', { nome: novoNome, valor: p.valor || 0 });
-    const novaId = nova[0].id;
+    // 1. Cria a peça no banco de dados
+    const novaDB = await sbInsert('pecas', { nome: novoNome, valor: p.valor || 0 });
+    const novaId = novaDB[0].id;
+    
+    // 2. Adiciona na lista local
     pecas.push({ id: novaId, nome: novoNome, valor: p.valor || 0, desc: p.desc || '' });
+    
+    // 3. Copia os dados de precificação (materiais, tempo, etc) da peça antiga para a nova
     precDados[novaId] = JSON.parse(JSON.stringify(getPrecPeca(pecaId)));
+    
+    // 4. Garante que a peça nova nasça com o cálculo de custo atualizado
+    recalcularCard(novaId);
+    
     await salvarPrecLocal();
     renderCatalogo();
-    _renderPrecBody();
-  } catch(e) { alert('Erro ao duplicar: ' + e.message); }
+    _renderPrecBody(); // Desenha a tela com a peça nova
+
+    // 5. MÁGICA: Rola a tela e força o cálculo da simulação
+    setTimeout(() => {
+      const card = document.getElementById('prec-card-' + novaId);
+      if (card) {
+        // Rola a tela até a peça nova
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Faz ela brilhar em dourado para você ver onde ela está
+        card.style.outline = '3px solid var(--gold)';
+        setTimeout(() => card.style.outline = 'none', 2000);
+
+        // Pega os dados da peça e força a simulação a rodar com o valor que já veio nela
+        const d = getPrecPeca(novaId);
+        const campoSimulacao = card.querySelector('.prec-simul-input');
+        if (campoSimulacao && campoSimulacao.value) {
+          simularLucro(novaId, campoSimulacao.value, d.custoTotalReal || 0);
+        }
+      }
+    }, 500);
+
+  } catch(e) { 
+    alert('Erro ao duplicar: ' + e.message); 
+  }
 }
 
 function atualizarPerdaResina(pecaId, val) {

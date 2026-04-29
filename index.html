@@ -3194,7 +3194,14 @@ function atualizarTempoPrec(pecaId, val) {
   const d = getPrecPeca(pecaId);
   d.tempo = Math.max(1, parseInt(val) || 60);
   d._tempoEditado = true;
+  
   recalcularCard(pecaId);
+  
+  const valorSimulado = document.querySelector(`#prec-card-${pecaId} .prec-simul-input`).value;
+  if (valorSimulado) {
+    simularLucro(pecaId, valorSimulado, d.custoTotalReal || 0);
+  }
+  
   salvarPrecLocal();
   renderCatalogo();
 }

@@ -3085,7 +3085,7 @@ function renderPrecCard(p, d, valorHora, custoFixoHora, cardIdx) {
       <label style="margin-left:0.4rem">Margem (%)</label>
       <input class="prec-lucro-input" type="number" min="0" max="99" step="1"
         value="${d.lucro}"
-        oninput="atualizarLucroPrec(${p.id}, this.value)">
+        oninput="atualizarLucroPrec(${p.id}, this.value); simularLucro(${p.id}, document.querySelector('#prec-card-${p.id} .prec-simul-input').value, ${r.custoTotalReal.toFixed(2)})"
       <label style="margin-left:0.4rem">Perda resina (%)</label>
       <input class="prec-lucro-input" type="number" min="0" max="50" step="1"
         value="${d.perdaResina ?? 5}"
@@ -3202,7 +3202,18 @@ function atualizarTempoPrec(pecaId, val) {
 function atualizarLucroPrec(pecaId, val) {
   const d = getPrecPeca(pecaId);
   d.lucro = parseFloat(val) || 0;
+  
+  // 1. Atualiza os preços principais (Base e Cartão)
   recalcularCard(pecaId);
+  
+  // 2. Traz o valor que está digitado no campo de simulação agora
+  const valorSimulado = document.querySelector(`#prec-card-${pecaId} .prec-simul-input`).value;
+  
+  // 3. Força a simulação a rodar de novo com o lucro novo
+  if (valorSimulado) {
+    simularLucro(pecaId, valorSimulado, d.custoTotalReal || 0);
+  }
+
   salvarPrecLocal();
   renderCatalogo();
 }

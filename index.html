@@ -3305,13 +3305,18 @@ function recalcularCard(pecaId) {
   });
   const r = calcPrec(materiaisComPerda, d.lucro, salario, custoFixo);
   const fmtR = v => 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits:2,maximumFractionDigits:2});
+  
   const card = document.getElementById('prec-card-' + pecaId);
   if (!card) return;
+  
   const rows = card.querySelectorAll('.prec-res-row .val');
   if (rows[0]) rows[0].textContent = fmtR(r.custoMat);
   if (rows[1]) rows[1].textContent = fmtR(salario);
   if (rows[2]) rows[2].textContent = fmtR(custoFixo);
   if (rows[3]) rows[3].textContent = fmtR(r.custoTotalReal);
+  // Linha nova do Lucro:
+  if (rows[4]) rows[4].textContent = fmtR(r.valorLucro);
+
   const totais = card.querySelectorAll('.prec-res-total .val');
   if (totais[0]) totais[0].textContent = fmtR(r.precoBase);
   if (totais[1]) totais[1].textContent = fmtR(r.precoCartao);

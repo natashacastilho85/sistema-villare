@@ -3339,29 +3339,34 @@ function simularLucro(pecaId, valorVenda, custoTotalReal) {
   if (!el) return;
   
   const venda = parseFloat(valorVenda);
+  
+  // Se o campo estiver vazio ou for zero, limpamos a mensagem
   if (!venda || venda <= 0) { 
     el.innerHTML = '← digite o valor'; 
     return; 
   }
-  
-  // 1. Pegamos a tarifa real que está configurada no seu sistema
+
+  // 1. Pegamos a taxa do cartão configurada no seu sistema
   const tarifaCartao = getTarifaCartao(); 
   
-  // 2. Calculamos quanto sobra DE VERDADE depois que o banco tira a parte dele
-  const valorLiquidoNoCaixa = venda * (1 - tarifaCartao);
+  // 2. Calculamos quanto sobra depois que o banco tira a taxa dele
+  const valorLiquido = venda * (1 - tarifaCartao);
   
-  // 3. O lucro em reais é o que sobra menos o custo total
-  const lucroValor = valorLiquidoNoCaixa - custoTotalReal;
+  // 3. O lucro em Reais é o valor líquido menos o custo da peça
+  const lucroValor = valorLiquido - custoTotalReal;
   
-  // 4. A margem real é a porcentagem desse lucro sobre o que entrou no caixa
-  const margemReal = (lucroValor / valorLiquidoNoCaixa) * 100;
+  // 4. A MARGEM CORRETA (Markup): O lucro comparado ao custo.
+  // Assim, se você vender pelo preço sugerido, a margem baterá certinho com o que você definiu.
+  const margemReal = (lucroValor / custoTotalReal) * 100;
 
+  // Formatação de cores e moeda
   const fmt = v => 'R$ ' + Math.abs(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
   const cor = lucroValor >= 0 ? 'var(--sage)' : 'var(--bordeaux)';
-
-  // O aviso de "abaixo" agora só aparece se o lucro for negativo (prejuízo)
+  
+  // Aviso caso o valor digitado resulte em prejuízo
   const avisoPrejuizo = lucroValor < 0 ? ` <span style="font-size:0.7rem;color:var(--bordeaux)">⚠ Prejuízo!</span>` : '';
 
+  // Escreve o resultado na tela
   el.innerHTML = `<span style="color:${cor}"><strong>${margemReal.toFixed(1)}% de margem real</strong> · lucro ${fmt(lucroValor)}</span>${avisoPrejuizo}`;
 }
 

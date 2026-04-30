@@ -381,6 +381,40 @@
   .ctab-td-total { font-family:'Calibri',serif; font-size:1.05rem; color:var(--brown); padding:0.65rem 0.9rem; text-align:center; white-space:nowrap; }
   .ctab-td-total-label { font-size:0.6rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); padding:0.65rem 0.8rem; position:sticky; left:0; background:white; white-space:nowrap; }
 
+/* --- ESTILO PARA O CELULAR (RETRÁTIL) --- */
+.materiais-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.8rem 1rem;
+  background: rgba(184, 134, 42, 0.05);
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--brown);
+  text-transform: uppercase;
+  border-top: 1px solid rgba(184, 134, 42, 0.1);
+}
+
+.materiais-content {
+  display: none; /* Escondido no celular por padrão */
+  padding: 0.5rem 0;
+}
+
+.materiais-content.aberto {
+  display: block; /* Abre no celular ao clicar */
+}
+
+/* --- TRAVA DE SEGURANÇA PARA O PC (NÃO MUDA NADA) --- */
+@media (min-width: 1024px) {
+  .materiais-toggle {
+    display: none !important; /* Esconde a barra de clique no PC */
+  }
+  .materiais-content {
+    display: block !important; /* Força a lista a ficar sempre aberta no PC */
+  }
+}
+  
 /* --- AJUSTE GLOBAL PC (VILLARE ATELIER) --- */
 @media (min-width: 1024px) {
   .screen {

@@ -1735,15 +1735,23 @@ function setupFiltros() {
 function renderContratos(statusFiltro) {
   const lista = document.getElementById('contratos-list');
   let filtrados;
+  
   if (statusFiltro === 'todos') {
     filtrados = contratos;
   } else if (statusFiltro === 'devedor') {
     filtrados = contratos.filter(c => isDevedor(c));
   } else {
-    filtrados = contratos.filter(c => c.status === statusFiltro);
+    // CORREÇÃO: Agora ele filtra pelo status EFETIVO (o que aparece na tela)
+    filtrados = contratos.filter(c => statusEfetivo(c) === statusFiltro);
   }
-  if (!filtrados.length) { lista.innerHTML=`<div style="text-align:center;padding:2rem;color:var(--muted);font-style:italic;font-family:'Calibri',serif">Nenhum contrato neste status</div>`; return; }
-  lista.innerHTML = filtrados.map(c=>contratoCardHTML(c)).join('');
+  
+  if (!filtrados.length) { 
+    // Coloquei um 'grid-column: 1 / -1' aqui para a mensagem de "vazio" ficar centralizada no PC também
+    lista.innerHTML=`<div style="text-align:center;padding:2rem;color:var(--muted);font-style:italic;font-family:'Calibri',serif;grid-column: 1 / -1;">Nenhum contrato neste status</div>`; 
+    return; 
+  }
+  
+  lista.innerHTML = filtrados.map(c => contratoCardHTML(c)).join('');
 }
 
 function statusEfetivo(c) {

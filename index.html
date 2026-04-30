@@ -1233,7 +1233,7 @@ async function sbUpdate(table, id, body) { return sbFetch(table+'?id=eq.'+id, { 
 async function sbDelete(table, id)    { return sbFetch(table+'?id=eq.'+id, { method:'DELETE' }); }
 
 function mapContrato(r) {
-  // Se a data vier vazia do banco, o app usa uma data padrão e não morre mais
+  // Isso garante que se um contrato de teste estiver sem data, o app não trava
   return { 
     id: r.id, 
     nome: r.nome || 'Noiva de Teste', 
@@ -4158,204 +4158,29 @@ function gerarImpressaoFicha(c, f) {
   
 initApp();
 
-// ── NOTIFICAÇÕES ──
-function proximoDiaUtil(data) {
-  const d = new Date(data+'T12:00:00');
-  d.setDate(d.getDate()+1);
-  while (d.getDay()===0 || d.getDay()===6) d.setDate(d.getDate()+1);
-  return d;
-}
+// --- BLOCO FINAL UNIFICADO (VILLARE ATELIER) ---
 
 async function verificarNotificacoes() {
   if (!('Notification' in window)) return;
-  if (Notification.permission === 'denied') return;
-  if (Notification.permission === 'default') {
-    const perm = await Notification.requestPermission();
-    if (perm !== 'granted') return;
-  }
-
-  const hoje = new Date(); hoje.setHours(0,0,0,0);
   const notificadas = JSON.parse(localStorage.getItem('villare-notif')||'{}');
-
-  contratos.filter(c=>c.status!=='Cancelado').forEach(c=>{
-    const dataCas = new Date(c.casamento+'T12:00:00'); dataCas.setHours(0,0,0,0);
-    const diffDias = Math.round((dataCas-hoje)/(1000*60*60*24));
-    const primeiroNome = c.nome.split(' ')[0];
-    const telLimpo = (c.telefone||'').replace(/\D/g,'');
-
-    // ── 20 dias antes (RESERVA ANTECIPADA) → lembrete de quitação para a noiva
-    if (c.formaPag === 'reserva' && diffDias === 20) {
-      const key20 = `20d-${c.id}`;
-      const saldo = c.valorBruto - totalPago(c);
-      if (!notificadas[key20] && saldo > 0.01) {
-        const dataLimite = new Date(dataCas); dataLimite.setDate(dataLimite.getDate() - 15);
-        const dlStr = `${String(dataLimite.getDate()).padStart(2,'0')}/${String(dataLimite.getMonth()+1).padStart(2,'0')}`;
-        const saldoStr = saldo.toLocaleString('pt-BR', {minimumFractionDigits:2,maximumFractionDigits:2});
-        const msgWa = encodeURIComponent(`Oi, ${primeiroNome}! 🤍\nPassando rapidinho pra te lembrar com carinho que faltam apenas 20 dias para o seu casamento! 💍\n\nComo combinamos no contrato (reserva antecipada), o saldo precisa estar quitado até 5 dias antes do casamento.\n\nSaldo restante: R$ ${saldoStr}\nPrazo final: ${dlStr}\n\nQualquer dúvida, é só me chamar! 🌸`);
-        const linkWa = telLimpo
-          ? `https://wa.me/55${telLimpo}?text=${msgWa}`
-          : `https://wa.me/?text=${msgWa}`;
-        const notif = new Notification('🌸 Lembrete de quitação — 20 dias', {
-          body: `${c.nome} · saldo R$ ${saldoStr}. Toque para enviar lembrete no WhatsApp.`,
-          icon: '/icon-192.png'
-        });
-        notif.onclick = () => { window.open(linkWa, '_blank'); notif.close(); };
-        notificadas[key20] = true;
-      }
+  contratos.filter(c => c.status !== 'Cancelado').forEach(c => {
+    const hojeZero = new Date(); hojeZero.setHours(0,0,0,0);
+    const dataCas = new Date((c.casamento || '2026-01-01') + 'T12:00:00');
+    const diff = Math.round((dataCas - hojeZero) / (1000 * 60 * 60 * 24));
+    if (diff === 7 && !notificadas[`7d-${c.id}`]) {
+      new Notification('💍 Casamento em 7 dias!', { body: `${c.nome} casa em breve! 🌸` });
+      notificadas[`7d-${c.id}`] = true;
     }
-
-    // ── 15 dias antes (RESERVA NÃO QUITADA) → alerta para a Natasha
-    if (c.formaPag === 'reserva' && diffDias <= 15 && diffDias >= 0) {
-      const saldo = c.valorBruto - totalPago(c);
-      if (saldo > 0.01) {
-        // Notifica só uma vez por dia, identificando pela data
-        const hojeStr = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`;
-        const keyDev = `devedor-${c.id}-${hojeStr}`;
-        if (!notificadas[keyDev]) {
-          const saldoStr = saldo.toLocaleString('pt-BR', {minimumFractionDigits:2,maximumFractionDigits:2});
-          const linkWa = telLimpo ? `https://wa.me/55${telLimpo}` : '';
-          const notif = new Notification('⚠ Reserva não quitada', {
-            body: `${c.nome} casa em ${diffDias} dia${diffDias===1?'':'s'} e ainda deve R$ ${saldoStr}. Cobre essa noiva!`,
-            icon: '/icon-192.png'
-          });
-          if (linkWa) {
-            notif.onclick = () => { window.open(linkWa, '_blank'); notif.close(); };
-          }
-          notificadas[keyDev] = true;
-        }
-      }
-    }
-
-    // 7 dias antes → notificação com link WhatsApp Business
-    const key7 = `7d-${c.id}`;
-    if (diffDias === 7 && !notificadas[key7]) {
-      const msgWa = encodeURIComponent(`Oi, ${primeiroNome}! 🤍\nSete dias! Desejo que você aproveite cada minutinho, do coração acelerado antes de entrar ao olhar de quem tá te esperando lá na frente. Que você esteja presente em cada detalhe ❤️\nE que esse casamento seja só o começo de um amor que só cresce e de uma parceria cada vez mais sólida!\nTe mando em anexo o PDF com as orientações de cuidado, embalagem e envio do buquê. Aproveita para ler entre hoje e amanhã e já se preparar para o envio e não ter correria após o casamento! Qualquer dúvida me chama! 😊`);
-      const linkWa = telLimpo
-        ? `https://wa.me/55${telLimpo}?text=${msgWa}`
-        : `https://wa.me/?text=${msgWa}`;
-      const notif = new Notification('💍 Casamento em 7 dias!', {
-        body: `${c.nome} casa dia ${c.casamento.split('-').reverse().join('/')}. Toque para enviar a mensagem no WhatsApp 🌸`,
-        icon: '/icon-192.png'
-      });
-      notif.onclick = () => { window.open(linkWa, '_blank'); notif.close(); };
-      notificadas[key7] = true;
-    }
-
-    // 1º dia útil após o casamento → lembrete inicial: buquê a caminho
-    // Aparece independente da chegada estar ou não marcada — é só pra você ficar de olho.
-    const keyBuque = `buque-${c.id}`;
-    const diaUtil = proximoDiaUtil(c.casamento); diaUtil.setHours(0,0,0,0);
-    const dataFormatadaUtil = c.casamento.split('-').reverse().join('/');
-    if (hoje.getTime()===diaUtil.getTime() && !notificadas[keyBuque]) {
-      new Notification('📦 Buquê a caminho!', {
-        body: `${c.nome} casou dia ${dataFormatadaUtil}. Fique de olho no buquê chegando! 🌸`,
-        icon: '/icon-192.png'
-      });
-      notificadas[keyBuque] = true;
-    }
-
-    // ── Após casamento: lembrete buquê (3, 5 e 8 dias) ──
-    // Notifica em cada um desses marcos SE a chegada do buquê ainda não tiver sido marcada.
-    // Quando a Natasha registrar a chegada (campo c.chegada), as próximas notificações param de aparecer.
-    const dataFormatada = c.casamento.split('-').reverse().join('/');
-    const primeiroNomeBuque = primeiroNome;
-    [3, 5, 8].forEach(d => {
-      if (diffDias === -d && !c.chegada) {
-        const key = `buque-d${d}-${c.id}`;
-        if (!notificadas[key]) {
-          const titulo = d === 3
-            ? '📦 O buquê da ' + primeiroNomeBuque + ' chegou?'
-            : d === 5
-              ? '📦 Já chegou o buquê da ' + primeiroNomeBuque + '?'
-              : '⚠ Atenção: buquê da ' + primeiroNomeBuque + ' ainda não chegou';
-          const corpo = `Casou dia ${dataFormatada} (${d} dia${d===1?'':'s'} atrás). ${d===8?'Vale dar uma cobrada!':'Confira se já recebeu.'}`;
-          const notif = new Notification(titulo, {
-            body: corpo,
-            icon: '/icon-192.png'
-          });
-          if (telLimpo) {
-            notif.onclick = () => { abrirWhatsBusiness(telLimpo); notif.close(); };
-          }
-          notificadas[key] = true;
-        }
-      }
-    });
   });
-
   localStorage.setItem('villare-notif', JSON.stringify(notificadas));
 }
 
-// Verificar notificações quando o app carrega
-window.addEventListener('load', () => setTimeout(verificarNotificacoes, 2000));
-</script>
-
-<script>
-const VAPID_PUBLIC_KEY = 'BKVSohfZ8h0qiVEi3y-MxLVlKVnU1Eoiq5Wx-oqcq_w5bj98tQlNs-Y-XlahEgQ3cEPKdjIWQUmsWItO3snxbhk';
-
-function urlBase64ToUint8Array(base64String) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const raw = atob(base64);
-  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
-}
-
-async function registrarPush(swReg) {
-  try {
-    let sub = await swReg.pushManager.getSubscription();
-    if (!sub) {
-      sub = await swReg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-      });
-    }
-    const { endpoint, keys } = sub.toJSON();
-    await fetch(`${SUPA_URL}/rest/v1/push_subscriptions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SUPA_KEY,
-        'Authorization': 'Bearer ' + SUPA_KEY,
-        'Prefer': 'resolution=merge-duplicates',
-      },
-      body: JSON.stringify({
-        endpoint,
-        p256dh: keys.p256dh,
-        auth: keys.auth,
-        criado_em: new Date().toISOString(),
-      }),
-    });
-    console.log('Push registrado com sucesso!');
-  } catch (e) {
-    console.warn('Push subscription erro:', e);
-  }
-}
-
-async function ativarPushAposLogin() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-  if (!window._swReg) return;
-  const perm = await Notification.requestPermission();
-  if (perm === 'granted') {
-    await registrarPush(window._swReg);
-  }
-}
-async function ativarPushAposLogin() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-  if (!window._swReg) return;
-  const perm = await Notification.requestPermission();
-  if (perm === 'granted') {
-    await registrarPush(window._swReg);
-  }
-}
-
-// NOVA FUNÇÃO DE FILTRO AQUI:
 function filtrarContratos() {
   const termo = document.getElementById('busca-contrato').value.toLowerCase();
   const lista = document.getElementById('contratos-list'); 
   const cards = lista.getElementsByClassName('contract-card');
-
   Array.from(cards).forEach(card => {
-    const texto = card.textContent.toLowerCase();
-    card.style.display = texto.includes(termo) ? "" : "none";
+    card.style.display = card.textContent.toLowerCase().includes(termo) ? "" : "none";
   });
 }
 
@@ -4365,518 +4190,77 @@ if ('serviceWorker' in navigator) {
     window._swReg = reg;
   });
 }
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', async () => {
-    const reg = await navigator.serviceWorker.register('/sw.js');
-    window._swReg = reg;
-  });
-}
-
-// --- INÍCIO DA CORREÇÃO BLINDADA FINAL (SEM BUSCA, SEM PROCESSOS, COM MARKUP) ---
-
-window._renderPrecBody = function() {
-  const valorHora = typeof getValorHora === 'function' ? getValorHora() : 0;
-  const custoFixoHora = typeof getCustoFixoPorHora === 'function' ? getCustoFixoPorHora() : 0;
-  
-  pecas.sort((a, b) => a.nome.localeCompare(b.nome));
-  const el = document.getElementById('prec-body');
-  if (!el) return;
-  
-  if (!pecas.length) {
-    el.innerHTML = '<div class="cal-empty">Nenhuma peça cadastrada ainda.</div>';
-    return;
-  }
-
-  // Reiniciando o HTML de forma limpa
-  let html = '';
-  
-  // Container da Tabela de Resumo
-  html += '<div id="prec-resumo-container"></div>';
-
-  // Cards das peças
-  pecas.forEach((p, idx) => {
-    const d = getPrecPeca(p.id);
-    html += window.renderPrecCard(p, d, valorHora, custoFixoHora, idx);
-  });
-
-  el.innerHTML = html;
-  
-  if (typeof atualizarTabelaResumo === 'function') {
-    atualizarTabelaResumo();
-  }
-};
 
 window.calcPrec = function(materiais, lucro, salario, custoFixoHora) {
   const custoMat = materiais.reduce((s, m) => s + (parseFloat(m.valor) || 0), 0);
   const custoTotalReal = custoMat + salario + custoFixoHora;
-  
-  const margemPercentual = (parseFloat(lucro) || 0) / 100;
-  const divisor = 1 - margemPercentual;
+  const margem = (parseFloat(lucro) || 0) / 100;
+  const divisor = 1 - margem;
   const precoBase = divisor > 0 ? custoTotalReal / divisor : custoTotalReal;
-  
   const valorLucro = precoBase - custoTotalReal;
-  const tarifaCartao = typeof getTarifaCartao === 'function' ? getTarifaCartao() : 0.0701; 
-  const precoCartao = precoBase / (1 - tarifaCartao);
-
-  function paraFinal7(valor) {
-    if (!valor || valor <= 0) return 0;
-    return Math.floor(valor / 10) * 10 + 7;
-  }
-
-  return { custoMat, custoTotalReal, valorLucro, precoBase: paraFinal7(precoBase), precoCartao: paraFinal7(precoCartao) };
+  const tarifa = (typeof custosConfig !== 'undefined') ? (custosConfig.tarifaCartao / 100) : 0.0701;
+  const precoCartao = precoBase / (1 - tarifa);
+  const f7 = v => v > 0 ? (Math.floor(v / 10) * 10 + 7) : 0;
+  return { custoMat, custoTotalReal, valorLucro, precoBase: f7(precoBase), precoCartao: f7(precoCartao) };
 };
 
-window.simularLucro = function(pecaId, valorVenda) {
-  const el = document.getElementById('prec-simul-res-' + pecaId);
-  if (!el) return;
-  const venda = parseFloat(valorVenda);
-  if (!venda || venda <= 0) { el.innerHTML = '← digite o valor'; return; }
-
-  const d = getPrecPeca(pecaId);
-  const mins = d.tempo || (typeof getTotalProcessosMins === 'function' ? getTotalProcessosMins() : 60) || 60;
-  const salario = (typeof getValorHora === 'function' ? getValorHora() : 0) * (mins / 60);
-  const custoFixo = (typeof getCustoFixoPorHora === 'function' ? getCustoFixoPorHora() : 0) * (mins / 60);
-  
-  const perdaResina = (d.perdaResina !== undefined ? d.perdaResina : 5) / 100;
-  const materiaisComPerda = d.materiais.map(m => {
-    if ((m.nome || '').toLowerCase().includes('resina') && perdaResina > 0) {
-      return { ...m, valor: (parseFloat(m.valor) || 0) * (1 + perdaResina) };
-    }
-    return m;
-  });
-  
-  const custoTotalReal = materiaisComPerda.reduce((s, m) => s + (parseFloat(m.valor) || 0), 0) + salario + custoFixo;
-  const tarifaCartao = typeof getTarifaCartao === 'function' ? getTarifaCartao() : 0.0701;
-  const vendaLiquida = venda * (1 - tarifaCartao);
-  const margemCalculada = ((vendaLiquida - custoTotalReal) / vendaLiquida) * 100;
-  const lucroEmReais = vendaLiquida - custoTotalReal;
-
-  const fmt = v => 'R$ ' + Math.abs(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
-  const cor = margemCalculada >= 0 ? 'var(--sage)' : 'var(--bordeaux)';
-  el.innerHTML = '<span style="color:' + cor + '"><strong>' + margemCalculada.toFixed(1) + '% de margem</strong> · lucro ' + fmt(lucroEmReais) + '</span>';
-};
-
-window.recalcularCard = function(pecaId) {
-  const d = getPrecPeca(pecaId);
-  const mins = d.tempo || (typeof getTotalProcessosMins === 'function' ? getTotalProcessosMins() : 60) || 60;
-  const salario = (typeof getValorHora === 'function' ? getValorHora() : 0) * (mins / 60);
-  const custoFixo = (typeof getCustoFixoPorHora === 'function' ? getCustoFixoPorHora() : 0) * (mins / 60);
-  
-  const perdaResina = (d.perdaResina !== undefined ? d.perdaResina : 5) / 100;
-  const materiaisComPerda = d.materiais.map(m => {
-    if ((m.nome || '').toLowerCase().includes('resina') && perdaResina > 0) {
-      return { ...m, valor: (parseFloat(m.valor) || 0) * (1 + perdaResina) };
-    }
-    return m;
-  });
-  
-  const r = window.calcPrec(materiaisComPerda, d.lucro, salario, custoFixo);
-  const fmtR = v => 'R$ ' + (parseFloat(v)||0).toLocaleString('pt-BR', {minimumFractionDigits:2,maximumFractionDigits:2});
-  
-  const card = document.getElementById('prec-card-' + pecaId);
-  if (!card) return;
-  
-  const rows = card.querySelectorAll('.prec-res-row .val');
-  if (rows[0]) rows[0].textContent = fmtR(r.custoMat);
-  if (rows[1]) rows[1].textContent = fmtR(salario);
-  if (rows[2]) rows[2].textContent = fmtR(custoFixo);
-  if (rows[3]) rows[3].textContent = fmtR(r.custoTotalReal);
-  if (rows[4]) rows[4].textContent = fmtR(r.valorLucro); 
-  
-  const totais = card.querySelectorAll('.prec-res-total .val');
-  if (totais[0]) totais[0].textContent = fmtR(r.precoBase);
-  if (totais[1]) totais[1].textContent = fmtR(r.precoCartao);
-  
-  if (typeof atualizarTabelaResumo === 'function') atualizarTabelaResumo();
-};
-
-window.renderPrecCard = function(p, d, valorHora, custoFixoHora, cardIdx) {
-  const mins = d.tempo || (typeof getTotalProcessosMins === 'function' ? getTotalProcessosMins() : 60) || 60;
-  const salario = valorHora * (mins / 60);
-  const custoFixo = custoFixoHora * (mins / 60);
-  
-  const perdaResina = (d.perdaResina !== undefined ? d.perdaResina : 5) / 100;
-  const materiaisComPerda = d.materiais.map(m => {
-    if ((m.nome || '').toLowerCase().includes('resina') && perdaResina > 0) {
-      return { ...m, valor: (parseFloat(m.valor) || 0) * (1 + perdaResina) };
-    }
-    return m;
-  });
-  
-  const r = window.calcPrec(materiaisComPerda, d.lucro, salario, custoFixo);
-  const fmtR = v => 'R$ ' + (parseFloat(v)||0).toLocaleString('pt-BR', {minimumFractionDigits:2,maximumFractionDigits:2});
-
-  let matRows = d.materiais.map((m, i) => {
-    if (m.matGlobalId) {
-      const matG = typeof matGlobais !== 'undefined' ? matGlobais.find(x => x.id === m.matGlobalId) : null;
-      if (matG) {
-        const qtdAtual = m.qtdUsada || 0;
-        return '<div class="prec-mat-row prec-mat-row-qtd" id="prec-mat-' + p.id + '-' + i + '">' +
-          '<span class="prec-mat-nome">' + matG.nome + '</span>' +
-          '<div class="prec-mat-qtd-wrap">' +
-            '<input class="prec-mat-qtd-input" type="number" step="0.01" min="0" value="' + (qtdAtual > 0 ? qtdAtual : '') + '" placeholder="0" oninput="atualizarQtdMatPrec(' + p.id + ', ' + i + ', this.value)">' +
-            '<span class="prec-mat-unit">' + matG.unidade + '</span>' +
-          '</div>' +
-          '<span class="prec-mat-custo-calc" id="prec-mat-custo-' + p.id + '-' + i + '">' + (m.valor > 0 ? fmtR(m.valor) : '—') + '</span>' +
-          '<button class="prec-mat-del" onclick="removerMatPrec(' + p.id + ', ' + i + ')" title="Remover">×</button>' +
-        '</div>';
-      }
-    }
-    return '<div class="prec-mat-row" id="prec-mat-' + p.id + '-' + i + '">' +
-      '<span class="prec-mat-nome">' + m.nome + '</span>' +
-      '<input class="prec-mat-input" type="number" step="0.01" min="0" value="' + (m.valor > 0 ? m.valor.toFixed(2) : '') + '" placeholder="R$" oninput="atualizarMatPrec(' + p.id + ', ' + i + ', this.value)">' +
-      '<button class="prec-mat-del" onclick="removerMatPrec(' + p.id + ', ' + i + ')" title="Remover">×</button>' +
-    '</div>';
-  }).join('');
-
-  return '<div class="prec-peca-card' + (cardIdx % 2 === 1 ? ' par' : '') + '" id="prec-card-' + p.id + '">' +
-    '<div class="prec-peca-header" style="display: flex; align-items: center; justify-content: space-between; padding: 0.8rem 1rem; background: rgba(184,134,42,0.05); border-bottom: 1px solid rgba(184,134,42,0.12);">' +
-      '<span class="prec-peca-nome" onclick="openPeca(' + p.id + ')" style="cursor:pointer; font-family:\'Calibri\',serif; font-size:1.1rem; color:var(--dark);" title="Editar nome">' + p.nome + ' ✏️</span>' +
-      '<div style="display:flex; gap:1rem; align-items:center;">' +
-        '<button onclick="duplicarPecaPrec(' + p.id + ')" title="Duplicar peça" style="background:none; border:none; font-size:1.1rem; cursor:pointer; padding:0;">📋</button>' +
-        '<button onclick="excluirPecaPrec(' + p.id + ')" title="Excluir peça" style="background:none; border:none; font-size:1.1rem; cursor:pointer; padding:0;">🗑️</button>' +
-        '<label style="display:flex; align-items:center; gap:0.3rem; font-size:0.65rem; color:var(--muted); cursor:pointer; border-left: 1px solid rgba(184,134,42,0.2); padding-left: 0.8rem; margin-left: 0.2rem;">' +
-          '<input type="checkbox" ' + (d.exibirCatalogo !== false ? 'checked' : '') + ' onchange="toggleExibirCatalogo(' + p.id + ', this.checked)" style="accent-color:var(--gold); width:13px; height:13px; cursor:pointer;"> Catálogo' +
-        '</label>' +
-      '</div>' +
-    '</div>' +
-    matRows +
-    '<button class="prec-add-btn" onclick="adicionarMatPrec(' + p.id + ')">＋ Adicionar material</button>' +
-    '<div class="prec-lucro-row" style="flex-wrap:wrap;gap:0.4rem 0.8rem">' +
-      '<label>Tempo (min)</label>' +
-      '<input class="prec-lucro-input" type="number" min="1" step="1" value="' + mins + '" id="prec-tempo-' + p.id + '" oninput="atualizarTempoPrec(' + p.id + ', this.value)">' +
-      '<label style="margin-left:0.4rem">Margem (%)</label>' +
-      '<input class="prec-lucro-input" type="number" min="0" max="99" step="1" value="' + d.lucro + '" oninput="atualizarLucroPrec(' + p.id + ', this.value); window.simularLucro(' + p.id + ', document.querySelector(\'#prec-card-\' + ' + p.id + ' + \' .prec-simul-input\').value)">' +
-      '<label style="margin-left:0.4rem">Perda resina (%)</label>' +
-      '<input class="prec-lucro-input" type="number" min="0" max="50" step="1" value="' + (d.perdaResina !== undefined ? d.perdaResina : 5) + '" oninput="atualizarPerdaResina(' + p.id + ', this.value)">' +
-    '</div>' +
-    '<div class="prec-resultado">' +
-      '<div class="prec-res-row"><span class="lbl">Custo materiais</span><span class="val">' + fmtR(r.custoMat) + '</span></div>' +
-      '<div class="prec-res-row"><span class="lbl">Salário (mão de obra)</span><span class="val">' + fmtR(salario) + '</span></div>' +
-      '<div class="prec-res-row"><span class="lbl">Custo fixo</span><span class="val">' + fmtR(custoFixo) + '</span></div>' +
-      '<div class="prec-res-row"><span class="lbl">Custo total real</span><span class="val" style="color:var(--dark)">' + fmtR(r.custoTotalReal) + '</span></div>' +
-      '<div class="prec-res-row" style="margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed rgba(184,134,42,0.15);">' +
-        '<span class="lbl" style="color:var(--sage); font-weight:600;">Lucro Real (em R$)</span>' +
-        '<span class="val" style="color:var(--sage); font-weight:600;">' + fmtR(r.valorLucro) + '</span>' +
-      '</div>' +
-      '<div class="prec-res-total">' +
-        '<span class="lbl">Preço base de venda</span>' +
-        '<span class="val">' + fmtR(r.precoBase) + '</span>' +
-      '</div>' +
-      '<div class="prec-res-total" style="margin-top:0.15rem">' +
-        '<span class="lbl" style="color:var(--brown)">Com tarifa cartão</span>' +
-        '<span class="val" style="font-size:1.3rem;color:var(--brown)">' + fmtR(r.precoCartao) + '</span>' +
-      '</div>' +
-    '</div>' +
-    '<div class="prec-simul">' +
-      '<label>Simular: se vender por R$</label>' +
-      '<div class="prec-simul-row">' +
-        '<input class="prec-simul-input" type="number" step="1" placeholder="ex: 1200" oninput="window.simularLucro(' + p.id + ', this.value)">' +
-        '<span class="prec-simul-result" id="prec-simul-res-' + p.id + '">← digite o valor</span>' +
-      '</div>' +
-    '</div>' +
-    '<div style="text-align: center; margin-top: 1rem; padding-top: 0.6rem; border-top: 1px dashed rgba(184,134,42,0.2);">' +
-      '<button onclick="document.querySelector(\'#drawer-prec .drawer\').scrollTo({top: 0, behavior: \'smooth\'})" style="background: none; border: none; color: var(--brown); font-size: 0.72rem; cursor: pointer; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;">' +
-        '↑ Voltar ao topo' +
-      '</button>' +
-    '</div>' +
-  '</div>';
-};
-
-// --- FIM DA CORREÇÃO BLINDADA FINAL ---
-
- // --- CORREÇÃO BLINDADA: CUSTOS E PRAZO ---
-window.openCustos = function() {
-  document.getElementById('c-salario-mensal').value = custosConfig.salarioMensal || '';
-  document.getElementById('c-horas-dia').value = custosConfig.horasPorDia || '';
-  document.getElementById('c-dias-mes').value = custosConfig.diasPorMes || '';
-  
-  const elTarifa = document.getElementById('c-tarifa-cartao');
-  if (elTarifa) elTarifa.value = custosConfig.tarifaCartao || 7.01; // Corrigido para 7,01%
-  
-  const elPrazo = document.getElementById('c-prazo-producao');
-  if (elPrazo) elPrazo.value = custosConfig.prazoProducao || 120;
-  
-  renderItensFixos();
-  renderProcessos();
-  atualizarPreviewCustos();
-  openDrawer('drawer-custos');
-};
-
-window.salvarCustos = function() {
-  try {
-    custosConfig.salarioMensal = parseFloat(document.getElementById('c-salario-mensal').value) || 0;
-    custosConfig.horasPorDia = parseFloat(document.getElementById('c-horas-dia').value) || 0;
-    custosConfig.diasPorMes = parseFloat(document.getElementById('c-dias-mes').value) || 0;
-    
-    const elTarifa = document.getElementById('c-tarifa-cartao');
-    if (elTarifa && elTarifa.value !== '') {
-      custosConfig.tarifaCartao = parseFloat(elTarifa.value);
-    } else {
-      custosConfig.tarifaCartao = 7.01; // Fallback correto para 7,01%
-    }
-    
-    // Captura o prazo blindado
-    const elPrazo = document.getElementById('c-prazo-producao');
-    if (elPrazo && elPrazo.value !== '') {
-      // Se tiver valor, salva exatamente o que você digitou
-      custosConfig.prazoProducao = parseInt(elPrazo.value, 10);
-    } else {
-      // Se você deixar a caixinha vazia, ele salva 120 para não quebrar
-      custosConfig.prazoProducao = 120; 
-    }
-    
-    // Salva na memória do navegador
-    localStorage.setItem('villare-custos', JSON.stringify(custosConfig));
-
-    closeDrawer('drawer-custos');
-    
-    // Atualiza a tela imediatamente para refletir o novo prazo nos cards
-    if (typeof window._renderPrecBody === 'function') window._renderPrecBody();
-    if (typeof renderAll === 'function') renderAll(); 
-    
-  } catch (erro) {
-    alert("Erro ao salvar! Detalhe: " + erro.message);
-  }
-};
-  // --- COMBO DE SOBREVIVÊNCIA: CELULAR RETRÁTIL + TRAVA PC + SALVAMENTO BLINDADO ---
-
-// 1. Detecta se é computador para manter tudo aberto
-const isPC = () => window.innerWidth >= 1024;
-
-// 2. Função de clique para as setinhas
-window.toggleSecaoVisivel = function(id, setaId) {
-  const conteudo = document.getElementById(id);
-  const seta = document.getElementById(setaId);
-  if (conteudo.classList.contains('aberto')) {
-    conteudo.classList.remove('aberto');
-    seta.textContent = '▼';
-  } else {
-    conteudo.classList.add('aberto');
-    seta.textContent = '▲';
-  }
-};
-
-// 3. O Motor do Card (renderPrecCard) - REESCRITO E BLINDADO
 window.renderPrecCard = function(p, d, valorHora, custoFixoHora, cardIdx) {
   const mins = d.tempo || 60;
   const salario = valorHora * (mins / 60);
   const custoFixo = custoFixoHora * (mins / 60);
   const perdaResina = (d.perdaResina !== undefined ? d.perdaResina : 5) / 100;
-  
   const materiaisComPerda = d.materiais.map(m => {
     if ((m.nome || '').toLowerCase().includes('resina') && perdaResina > 0) {
       return { ...m, valor: (parseFloat(m.valor) || 0) * (1 + perdaResina) };
     }
     return m;
   });
-  
   const r = window.calcPrec(materiaisComPerda, d.lucro, salario, custoFixo);
-  const fmtR = v => 'R$ ' + (parseFloat(v)||0).toLocaleString('pt-BR', {minimumFractionDigits:2,maximumFractionDigits:2});
-  const noPC = isPC();
-
-  let matRows = d.materiais.map((m, i) => {
-    if (m.matGlobalId) {
-      const matG = typeof matGlobais !== 'undefined' ? matGlobais.find(x => x.id === m.matGlobalId) : null;
-      if (matG) {
-        return `<div class="prec-mat-row prec-mat-row-qtd">
-          <span class="prec-mat-nome">${matG.nome}</span>
-          <div class="prec-mat-qtd-wrap">
-            <input class="prec-mat-qtd-input" type="number" step="0.01" min="0" value="${m.qtdUsada || ''}" placeholder="0" oninput="atualizarQtdMatPrec(${p.id}, ${i}, this.value)">
-            <span class="prec-mat-unit">${matG.unidade}</span>
-          </div>
-          <span class="prec-mat-custo-calc" id="prec-mat-custo-${p.id}-${i}">${m.valor > 0 ? fmtR(m.valor) : '—'}</span>
-          <button class="prec-mat-del" onclick="removerMatPrec(${p.id}, ${i})">×</button>
-        </div>`;
-      }
-    }
-    return `<div class="prec-mat-row">
-      <span class="prec-mat-nome">${m.nome}</span>
-      <input class="prec-mat-input" type="number" step="0.01" min="0" value="${m.valor > 0 ? m.valor.toFixed(2) : ''}" placeholder="R$" oninput="atualizarMatPrec(${p.id}, ${i}, this.value)">
-      <button class="prec-mat-del" onclick="removerMatPrec(${p.id}, ${i})">×</button>
-    </div>`;
-  }).join('');
-
-  return `<div class="prec-peca-card ${cardIdx % 2 === 1 ? 'par' : ''}" id="prec-card-${p.id}">
-    <div class="prec-peca-header">
-      <span class="prec-peca-nome" onclick="openPeca(${p.id})">${p.nome} ✏️</span>
-      <div style="display:flex; gap:1rem; align-items:center;">
-        <button onclick="duplicarPecaPrec(${p.id})" title="Duplicar">📋</button>
-        <button onclick="excluirPecaPrec(${p.id})" title="Excluir">🗑️</button>
-        <label style="font-size:0.65rem; color:var(--muted); display:flex; align-items:center; gap:0.2rem">
-          <input type="checkbox" ${d.exibirCatalogo !== false ? 'checked' : ''} onchange="toggleExibirCatalogo(${p.id}, this.checked)"> Catálogo
-        </label>
-      </div>
-    </div>
-
-    <!-- Barra de Materiais (Retrátil no celular, invisível no PC) -->
-    <div class="materiais-toggle" style="${noPC ? 'display:none !important' : ''}" onclick="toggleSecaoVisivel('list-mat-${p.id}', 'seta-mat-${p.id}')">
-      <span>Materiais Utilizados</span><span id="seta-mat-${p.id}">▼</span>
-    </div>
-    
-    <!-- Conteúdo dos Materiais (Sempre aberto no PC) -->
-    <div class="materiais-content ${noPC ? 'aberto' : ''}" id="list-mat-${p.id}">
-      ${matRows}
-      <button class="prec-add-btn" onclick="adicionarMatPrec(${p.id})">＋ Adicionar material</button>
-    </div>
-
-    <div class="prec-lucro-row">
-      <label>Tempo (min)</label>
-      <input class="prec-lucro-input" type="number" value="${mins}" oninput="atualizarTempoPrec(${p.id}, this.value)">
-      <label>Margem (%)</label>
-      <input class="prec-lucro-input" type="number" value="${d.lucro}" oninput="atualizarLucroPrec(${p.id}, this.value)">
-    </div>
-
-    <div class="prec-resultado">
-      <div class="prec-res-row"><span class="lbl">Custo Total Real</span><span class="val">${fmtR(r.custoTotalReal)}</span></div>
-      <div class="prec-res-row"><span class="lbl" style="color:var(--sage); font-weight:600;">Lucro (R$)</span><span class="val" style="color:var(--sage); font-weight:600;">${fmtR(r.valorLucro)}</span></div>
-      <div class="prec-res-total"><span class="lbl">Preço PIX</span><span class="val">${fmtR(r.precoBase)}</span></div>
-      <div class="prec-res-total"><span class="lbl">Preço CARTÃO</span><span class="val" style="font-size:1.3rem; color:var(--brown)">${fmtR(r.precoCartao)}</span></div>
-    </div>
-  </div>`;
-};
-
-// 4. Salvar automático no banco (Supabase)
-window.salvarPrecLocal = async function() {
-  try {
-    await sbFetch('configuracoes', {
-      method: 'POST',
-      headers: { 'Prefer': 'resolution=merge-duplicates', 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chave: 'prec-dados', valor: precDados })
-    });
-  } catch(e) { console.error("Erro banco:", e); }
-};
-
-window.atualizarTempoPrec = function(id, v) { getPrecPeca(id).tempo = parseInt(v)||60; window.recalcularCard(id); window.salvarPrecLocal(); };
-window.atualizarLucroPrec = function(id, v) { getPrecPeca(id).lucro = parseFloat(v)||0; window.recalcularCard(id); window.salvarPrecLocal(); };
-
- // --- BLOCO MESTRE: RENDERIZAÇÃO COM SANFONAS (VILLARE ATELIER) ---
-
-// 1. Função de abrir/fechar seções
-window.toggleSecaoVisivel = function(id, setaId) {
-  const conteudo = document.getElementById(id);
-  const seta = document.getElementById(setaId);
-  if (conteudo.classList.contains('aberto')) {
-    conteudo.classList.remove('aberto');
-    seta.textContent = '▼';
-  } else {
-    conteudo.classList.add('aberto');
-    seta.textContent = '▲';
-  }
-};
-
-// 2. Motor de Reconstrução do Card
-window.renderPrecCard = function(p, d, valorHora, custoFixoHora, cardIdx) {
-  const mins = d.tempo || (typeof getTotalProcessosMins === 'function' ? getTotalProcessosMins() : 60) || 60;
-  const salario = valorHora * (mins / 60);
-  const custoFixo = custoFixoHora * (mins / 60);
-  const perdaResina = (d.perdaResina !== undefined ? d.perdaResina : 5) / 100;
-  
-  const materiaisComPerda = d.materiais.map(m => {
-    if ((m.nome || '').toLowerCase().includes('resina') && perdaResina > 0) {
-      return { ...m, valor: (parseFloat(m.valor) || 0) * (1 + perdaResina) };
-    }
-    return m;
-  });
-  
-  const r = window.calcPrec(materiaisComPerda, d.lucro, salario, custoFixo);
-  const fmtR = v => 'R$ ' + (parseFloat(v)||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const fmtR = v => 'R$ ' + (parseFloat(v)||0).toLocaleString('pt-BR', {minimumFractionDigits:2});
   const isPC = window.innerWidth >= 1024;
 
-  // Renderização das linhas de MATERIAIS
   let matRows = d.materiais.map((m, i) => {
     if (m.matGlobalId) {
       const matG = (typeof matGlobais !== 'undefined') ? matGlobais.find(x => x.id === m.matGlobalId) : null;
       if (matG) {
-        return `<div class="prec-mat-row prec-mat-row-qtd">
-          <span class="prec-mat-nome">${matG.nome}</span>
-          <div class="prec-mat-qtd-wrap">
-            <input class="prec-mat-qtd-input" type="number" step="0.01" value="${m.qtdUsada || ''}" placeholder="0" oninput="atualizarQtdMatPrec(${p.id}, ${i}, this.value)">
-            <span class="prec-mat-unit">${matG.unidade}</span>
-          </div>
-          <span class="prec-mat-custo-calc">${m.valor > 0 ? fmtR(m.valor) : '—'}</span>
-          <button class="prec-mat-del" onclick="removerMatPrec(${p.id}, ${i})">×</button>
-        </div>`;
+        return `<div class="prec-mat-row prec-mat-row-qtd"><span class="prec-mat-nome">${matG.nome}</span><div class="prec-mat-qtd-wrap"><input class="prec-mat-qtd-input" type="number" step="0.01" value="${m.qtdUsada || ''}" oninput="atualizarQtdMatPrec(${p.id}, ${i}, this.value)"><span class="prec-mat-unit">${matG.unidade}</span></div><span class="prec-mat-custo-calc">${m.valor > 0 ? fmtR(m.valor) : '—'}</span></div>`;
       }
     }
-    return `<div class="prec-mat-row">
-      <span class="prec-mat-nome">${m.nome}</span>
-      <input class="prec-mat-input" type="number" step="0.01" value="${m.valor > 0 ? m.valor.toFixed(2) : ''}" placeholder="R$" oninput="atualizarMatPrec(${p.id}, ${i}, this.value)">
-      <button class="prec-mat-del" onclick="removerMatPrec(${p.id}, ${i})">×</button>
-    </div>`;
+    return `<div class="prec-mat-row"><span class="prec-mat-nome">${m.nome}</span><input class="prec-mat-input" type="number" value="${m.valor > 0 ? m.valor.toFixed(2) : ''}" oninput="atualizarMatPrec(${p.id}, ${i}, this.value)"></div>`;
   }).join('');
 
-  // Renderização das linhas de PROCESSOS (puxando da função de custos)
-  let procRows = '';
-  if (typeof renderProcessosPeca === 'function') {
-    procRows = renderProcessosPeca(p.id, d);
-  } else {
-    procRows = `<div class="prec-processos-wrap"><div style="padding:1rem;font-style:italic;font-size:0.8rem;color:var(--muted)">Configure os processos no menu de Custos</div></div>`;
-  }
-
-  return `
-  <div class="prec-peca-card ${cardIdx % 2 === 1 ? 'par' : ''}" id="prec-card-${p.id}">
-    <div class="prec-peca-header">
-      <span class="prec-peca-nome" onclick="openPeca(${p.id})">${p.nome} ✏️</span>
-      <div style="display:flex; gap:1rem; align-items:center;">
-        <button onclick="duplicarPecaPrec(${p.id})">📋</button>
-        <button onclick="excluirPecaPrec(${p.id})">🗑️</button>
-        <label style="font-size:0.65rem; color:var(--muted); display:flex; align-items:center; gap:0.2rem">
-          <input type="checkbox" ${d.exibirCatalogo !== false ? 'checked' : ''} onchange="toggleExibirCatalogo(${p.id}, this.checked)"> Catálogo
-        </label>
-      </div>
-    </div>
-
-    <!-- SEÇÃO MATERIAIS -->
-    <div class="materiais-toggle" style="${isPC ? 'display:none !important' : ''}" onclick="toggleSecaoVisivel('list-mat-${p.id}', 'seta-mat-${p.id}')">
-      <span>Materiais Utilizados</span><span id="seta-mat-${p.id}">▼</span>
-    </div>
-    <div class="materiais-content ${isPC ? 'aberto' : ''}" id="list-mat-${p.id}">
-      ${matRows}
-      <button class="prec-add-btn" onclick="adicionarMatPrec(${p.id})">＋ Adicionar material</button>
-    </div>
-
-    <!-- SEÇÃO PROCESSOS -->
-    <div class="processos-toggle" style="${isPC ? 'display:none !important' : ''}" onclick="toggleSecaoVisivel('list-proc-${p.id}', 'seta-proc-${p.id}')">
-      <span>Processos de Produção</span><span id="seta-proc-${p.id}">▼</span>
-    </div>
-    <div class="processos-content ${isPC ? 'aberto' : ''}" id="list-proc-${p.id}">
-      ${procRows}
-    </div>
-
-    <div class="prec-lucro-row">
-      <label>Tempo total (min)</label>
-      <input class="prec-lucro-input" type="number" value="${mins}" id="prec-tempo-${p.id}" oninput="atualizarTempoPrec(${p.id}, this.value)">
-      <label>Margem (%)</label>
-      <input class="prec-lucro-input" type="number" value="${d.lucro}" oninput="atualizarLucroPrec(${p.id}, this.value)">
-    </div>
-
+  return `<div class="prec-peca-card ${cardIdx % 2 === 1 ? 'par' : ''}" id="prec-card-${p.id}">
+    <div class="prec-peca-header"><span class="prec-peca-nome" onclick="openPeca(${p.id})">${p.nome} ✏️</span></div>
+    <div class="materiais-toggle" style="${isPC ? 'display:none' : ''}" onclick="toggleSecaoVisivel('list-mat-${p.id}', 'seta-mat-${p.id}')"><span>Materiais</span><span id="seta-mat-${p.id}">▼</span></div>
+    <div class="materiais-content ${isPC ? 'aberto' : ''}" id="list-mat-${p.id}">${matRows}<button class="prec-add-btn" onclick="adicionarMatPrec(${p.id})">＋ Material</button></div>
     <div class="prec-resultado">
-      <div class="prec-res-row"><span class="lbl">Custo Total Real</span><span class="val">${fmtR(r.custoTotalReal)}</span></div>
-      <div class="prec-res-row"><span class="lbl" style="color:var(--sage); font-weight:600;">Lucro Real</span><span class="val" style="color:var(--sage); font-weight:600;">${fmtR(r.valorLucro)}</span></div>
-      <div class="prec-res-total"><span class="lbl">Venda PIX</span><span class="val">${fmtR(r.precoBase)}</span></div>
-      <div class="prec-res-total"><span class="lbl" style="color:var(--brown)">Venda CARTÃO</span><span class="val" style="font-size:1.3rem; color:var(--brown)">${fmtR(r.precoCartao)}</span></div>
+      <div class="prec-res-row"><span class="lbl">Custo Total</span><span class="val">${fmtR(r.custoTotalReal)}</span></div>
+      <div class="prec-res-row"><span class="lbl" style="color:var(--sage)">Lucro</span><span class="val" style="color:var(--sage)">${fmtR(r.valorLucro)}</span></div>
+      <div class="prec-res-total"><span class="lbl">PIX</span><span class="val">${fmtR(r.precoBase)}</span></div>
+      <div class="prec-res-total"><span class="lbl" style="color:var(--brown)">CARTÃO</span><span class="val" style="font-size:1.3rem; color:var(--brown)">${fmtR(r.precoCartao)}</span></div>
     </div>
   </div>`;
 };
 
-// Força o salvamento correto dos dados da ficha na edição
-const originalSaveEditContrato = window.saveEditContrato;
-window.saveEditContrato = async function() {
-  const f = {
-    nomeNoiva: document.getElementById('e-f-noiva').value,
-    nomeNoivo: document.getElementById('e-f-noivo').value,
-    instagram: document.getElementById('e-f-insta').value,
-    quemFezBuque: document.getElementById('e-f-buque').value,
-    cerimonialista: document.getElementById('e-f-cerimonial').value,
-    quemIndicou: document.getElementById('e-f-indicacao').value,
-    iniciaisData: document.getElementById('e-f-iniciais').value,
-    espelhoPresente: document.getElementById('e-f-espelho').value,
-    obsGeral: document.getElementById('e-f-obs-geral').value
-  };
-  window._fichaEditadaManual = f; // Garante que a variável global receba os dados
-  originalSaveEditContrato();
+window.toggleSecaoVisivel = function(id, setaId) {
+  const c = document.getElementById(id); const s = document.getElementById(setaId);
+  if (c && s) { c.classList.toggle('aberto'); s.textContent = c.classList.contains('aberto') ? '▲' : '▼'; }
 };
+
+window._renderPrecBody = function() {
+  const vHora = typeof getValorHora === 'function' ? getValorHora() : 0;
+  const cfHora = typeof getCustoFixoPorHora === 'function' ? getCustoFixoPorHora() : 0;
+  pecas.sort((a, b) => a.nome.localeCompare(b.nome));
+  const el = document.getElementById('prec-body'); if (!el) return;
+  let html = '<div id="prec-resumo-container"></div>';
+  pecas.forEach((p, idx) => { html += window.renderPrecCard(p, getPrecPeca(p.id), vHora, cfHora, idx); });
+  el.innerHTML = html;
+  if (typeof atualizarTabelaResumo === 'function') atualizarTabelaResumo();
+};
+
+// LIGA O MOTOR DO APP
+initApp();
+window.addEventListener('load', () => setTimeout(verificarNotificacoes, 2000));
   
 </script>
 </body>

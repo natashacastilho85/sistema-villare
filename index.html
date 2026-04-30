@@ -4497,14 +4497,14 @@ window.renderPrecCard = function(p, d, valorHora, custoFixoHora, cardIdx) {
 
 // --- FIM DA CORREÇÃO BLINDADA FINAL ---
 
-  // --- CORREÇÃO BLINDADA: CUSTOS E PRAZO ---
+ // --- CORREÇÃO BLINDADA: CUSTOS E PRAZO ---
 window.openCustos = function() {
   document.getElementById('c-salario-mensal').value = custosConfig.salarioMensal || '';
   document.getElementById('c-horas-dia').value = custosConfig.horasPorDia || '';
   document.getElementById('c-dias-mes').value = custosConfig.diasPorMes || '';
   
   const elTarifa = document.getElementById('c-tarifa-cartao');
-  if (elTarifa) elTarifa.value = custosConfig.tarifaCartao || '';
+  if (elTarifa) elTarifa.value = custosConfig.tarifaCartao || 7.01; // Corrigido para 7,01%
   
   const elPrazo = document.getElementById('c-prazo-producao');
   if (elPrazo) elPrazo.value = custosConfig.prazoProducao || 120;
@@ -4525,14 +4525,16 @@ window.salvarCustos = function() {
     if (elTarifa && elTarifa.value !== '') {
       custosConfig.tarifaCartao = parseFloat(elTarifa.value);
     } else {
-      custosConfig.tarifaCartao = 6.99;
+      custosConfig.tarifaCartao = 7.01; // Fallback correto para 7,01%
     }
     
     // Captura o prazo blindado
     const elPrazo = document.getElementById('c-prazo-producao');
     if (elPrazo && elPrazo.value !== '') {
-      custosConfig.prazoProducao = parseInt(elPrazo.value);
+      // Se tiver valor, salva exatamente o que você digitou
+      custosConfig.prazoProducao = parseInt(elPrazo.value, 10);
     } else {
+      // Se você deixar a caixinha vazia, ele salva 120 para não quebrar
       custosConfig.prazoProducao = 120; 
     }
     

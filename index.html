@@ -381,72 +381,93 @@
   .ctab-td-total { font-family:'Calibri',serif; font-size:1.05rem; color:var(--brown); padding:0.65rem 0.9rem; text-align:center; white-space:nowrap; }
   .ctab-td-total-label { font-size:0.6rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); padding:0.65rem 0.8rem; position:sticky; left:0; background:white; white-space:nowrap; }
 
-/* --- ESTILO FINAL CORRIGIDO PARA PC --- */
+/* --- ESTILO GLOBAL PARA COMPUTADOR (Villare Atelier) --- */
 @media (min-width: 1024px) {
-  #prec-body {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1.5rem;
-    align-items: start;
-    padding: 1rem;
+  
+  /* 1. TELAS EM GRID (Início, Contratos, Gastos, Precificação) */
+  .metrics-grid, 
+  #contratos-list, 
+  #gastos-list, 
+  #prec-body,
+  #calendario-list,
+  #catalogo-list {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 1.5rem !important;
+    align-items: start !important;
   }
 
-  /* Ajuste do container para a tabela não esticar */
-  #prec-resumo-container {
-    grid-column: 1 / -1;
-    display: flex;
-    justify-content: flex-start;
-    margin-bottom: 2rem;
+  /* 2. AJUSTES DE LARGURA TOTAL PARA CABEÇALHOS E RESUMOS */
+  .section-title, 
+  .fin-totais, 
+  #prec-resumo-container,
+  #devedores-section,
+  .filter-row {
+    grid-column: 1 / -1 !important;
   }
 
-  /* Estilo para a "caixa" da tabela (que é uma div no seu JS) */
-  .prec-resumo-card {
+  /* 3. TELA DE INÍCIO (Ajuste dos cards de métricas e produção) */
+  .metric-card { margin-bottom: 0 !important; height: 100%; }
+  .producao-card { grid-column: 1 / -1 !important; }
+
+  /* 4. TELA DE CONTRATO (Detalhe) */
+  #detail-body .drawer {
+    max-width: 800px !important;
+    margin: 0 auto !important;
+    left: 50% !important;
+    transform: translateX(-50%) translateY(100%) !important;
+  }
+  .drawer-overlay.open #detail-body .drawer {
+    transform: translateX(-50%) translateY(0) !important;
+  }
+
+  /* 5. FINANCEIRO E DADOS (Tabelas lado a lado) */
+  #financeiro-list, #screen-comparativos {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 1.5rem !important;
+  }
+  #screen-comparativos .section-title { grid-column: 1 / -1 !important; }
+
+  /* 6. MATERIAIS E CUSTOS (Lista de Insumos) */
+  #mat-globais-list, #c-fixos-list, #c-processos-list {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 1rem !important;
+  }
+
+  /* 7. REGRAS DE RESPIRO (Igual ao que fizemos na precificação) */
+  .prec-resumo-card, .mat-global-card {
     width: auto !important;
     min-width: 400px;
-    background: rgba(184, 134, 42, 0.03);
-    border: 1px solid rgba(184, 134, 42, 0.15);
-    border-radius: 8px;
-    overflow: hidden;
   }
 
-  /* Estilo para as linhas (que são divs .prec-resumo-row) */
-  .prec-resumo-row {
+  /* Aplica o distanciamento elegante em todas as listas tipo "tabela" */
+  .prec-resumo-row, .mat-global-header, .detail-row, .fin-row {
     display: flex !important;
     justify-content: space-between !important;
-    align-items: center !important;
-    padding: 0.6rem 1.2rem !important;
-    border-bottom: 1px solid rgba(184, 134, 42, 0.08);
+    gap: 50px !important; /* Respiro entre nome e valor */
   }
 
-  /* O NOME DA PEÇA (Primeiro span) */
-  .prec-resumo-nome {
+  .prec-resumo-nome, .mat-global-nome, .dl, .lbl {
     white-space: nowrap !important;
-    padding-right: 60px !important; /* MURO DE SEGURANÇA */
-    font-weight: 500;
     flex-shrink: 0;
   }
 
-  /* O PREÇO (Segundo span) */
-  .prec-resumo-val {
-    white-space: nowrap !important;
-    text-align: right !important;
-    margin-left: auto !important;
-  }
-
-  .prec-resumo-row:hover {
-    background: rgba(184, 134, 42, 0.08);
+  /* 8. DRAWERS (Materiais e Custos mais largos no PC) */
+  #drawer-materiais .drawer, #drawer-custos .drawer, #drawer-prec .drawer {
+    max-width: 1200px !important;
+    left: 50% !important;
+    margin-left: -600px !important;
   }
 }
 
-/* Ajuste para Tablet (2 cards) */
+/* Ajuste para Tablet (2 colunas) */
 @media (min-width: 768px) and (max-width: 1023px) {
-  #prec-body {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
+  .metrics-grid, #contratos-list, #gastos-list, #prec-body, #financeiro-list {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
     gap: 1rem;
-  }
-  #prec-resumo-container {
-    grid-column: 1 / -1;
   }
 }
 </style>

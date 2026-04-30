@@ -4734,9 +4734,9 @@ window.salvarPrecLocal = async function() {
 window.atualizarTempoPrec = function(id, v) { getPrecPeca(id).tempo = parseInt(v)||60; window.recalcularCard(id); window.salvarPrecLocal(); };
 window.atualizarLucroPrec = function(id, v) { getPrecPeca(id).lucro = parseFloat(v)||0; window.recalcularCard(id); window.salvarPrecLocal(); };
 
-  // --- BLOCO DEFINITIVO: MATERIAIS + PROCESSOS (SANFONA) ---
+ // --- BLOCO MESTRE: RENDERIZAÇÃO COM SANFONAS (VILLARE ATELIER) ---
 
-// 1. Função que abre e fecha as seções
+// 1. Função de abrir/fechar seções
 window.toggleSecaoVisivel = function(id, setaId) {
   const conteudo = document.getElementById(id);
   const seta = document.getElementById(setaId);
@@ -4749,39 +4749,99 @@ window.toggleSecaoVisivel = function(id, setaId) {
   }
 };
 
-// 2. O "Injetor" de sanfonas para Celular
-const renderOriginalParaCelular = window.renderPrecCard;
+// 2. Motor de Reconstrução do Card
 window.renderPrecCard = function(p, d, valorHora, custoFixoHora, cardIdx) {
-  let html = renderOriginalParaCelular(p, d, valorHora, custoFixoHora, cardIdx);
+  const mins = d.tempo || (typeof getTotalProcessosMins === 'function' ? getTotalProcessosMins() : 60) || 60;
+  const salario = valorHora * (mins / 60);
+  const custoFixo = custoFixoHora * (mins / 60);
+  const perdaResina = (d.perdaResina !== undefined ? d.perdaResina : 5) / 100;
   
-  // Se for computador, não faz nada, retorna o original
-  if (window.innerWidth >= 1024) return html;
+  const materiaisComPerda = d.materiais.map(m => {
+    if ((m.nome || '').toLowerCase().includes('resina') && perdaResina > 0) {
+      return { ...m, valor: (parseFloat(m.valor) || 0) * (1 + perdaResina) };
+    }
+    return m;
+  });
+  
+  const r = window.calcPrec(materiaisComPerda, d.lucro, salario, custoFixo);
+  const fmtR = v => 'R$ ' + (parseFloat(v)||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const isPC = window.innerWidth >= 1024;
 
-  // Injeta Sanfona de MATERIAIS
-  html = html.replace(
-    '<div class="prec-mat-row',
-    `<div class="materiais-toggle" onclick="toggleSecaoVisivel('list-mat-${p.id}', 'seta-mat-${p.id}')">
-       <span>Materiais Utilizados</span><span id="seta-mat-${p.id}">▼</span>
-     </div>
-     <div class="materiais-content" id="list-mat-${p.id}"><div class="prec-mat-row`
-  ).replace(
-    '<button class="prec-add-btn"',
-    `</div><button class="prec-add-btn"`
-  );
+  // Renderização das linhas de MATERIAIS
+  let matRows = d.materiais.map((m, i) => {
+    if (m.matGlobalId) {
+      const matG = (typeof matGlobais !== 'undefined') ? matGlobais.find(x => x.id === m.matGlobalId) : null;
+      if (matG) {
+        return `<div class="prec-mat-row prec-mat-row-qtd">
+          <span class="prec-mat-nome">${matG.nome}</span>
+          <div class="prec-mat-qtd-wrap">
+            <input class="prec-mat-qtd-input" type="number" step="0.01" value="${m.qtdUsada || ''}" placeholder="0" oninput="atualizarQtdMatPrec(${p.id}, ${i}, this.value)">
+            <span class="prec-mat-unit">${matG.unidade}</span>
+          </div>
+          <span class="prec-mat-custo-calc">${m.valor > 0 ? fmtR(m.valor) : '—'}</span>
+          <button class="prec-mat-del" onclick="removerMatPrec(${p.id}, ${i})">×</button>
+        </div>`;
+      }
+    }
+    return `<div class="prec-mat-row">
+      <span class="prec-mat-nome">${m.nome}</span>
+      <input class="prec-mat-input" type="number" step="0.01" value="${m.valor > 0 ? m.valor.toFixed(2) : ''}" placeholder="R$" oninput="atualizarMatPrec(${p.id}, ${i}, this.value)">
+      <button class="prec-mat-del" onclick="removerMatPrec(${p.id}, ${i})">×</button>
+    </div>`;
+  }).join('');
 
-  // Injeta Sanfona de PROCESSOS
-  html = html.replace(
-    '<div class="prec-processos-wrap">',
-    `<div class="processos-toggle" onclick="toggleSecaoVisivel('list-proc-${p.id}', 'seta-proc-${p.id}')">
-       <span>Processos de Produção</span><span id="seta-proc-${p.id}">▼</span>
-     </div>
-     <div class="processos-content" id="list-proc-${p.id}"><div class="prec-processos-wrap">`
-  ).replace(
-    '</div><div class="prec-lucro-row">',
-    `</div></div><div class="prec-lucro-row">`
-  );
+  // Renderização das linhas de PROCESSOS (puxando da função de custos)
+  let procRows = '';
+  if (typeof renderProcessosPeca === 'function') {
+    procRows = renderProcessosPeca(p.id, d);
+  } else {
+    procRows = `<div class="prec-processos-wrap"><div style="padding:1rem;font-style:italic;font-size:0.8rem;color:var(--muted)">Configure os processos no menu de Custos</div></div>`;
+  }
 
-  return html;
+  return `
+  <div class="prec-peca-card ${cardIdx % 2 === 1 ? 'par' : ''}" id="prec-card-${p.id}">
+    <div class="prec-peca-header">
+      <span class="prec-peca-nome" onclick="openPeca(${p.id})">${p.nome} ✏️</span>
+      <div style="display:flex; gap:1rem; align-items:center;">
+        <button onclick="duplicarPecaPrec(${p.id})">📋</button>
+        <button onclick="excluirPecaPrec(${p.id})">🗑️</button>
+        <label style="font-size:0.65rem; color:var(--muted); display:flex; align-items:center; gap:0.2rem">
+          <input type="checkbox" ${d.exibirCatalogo !== false ? 'checked' : ''} onchange="toggleExibirCatalogo(${p.id}, this.checked)"> Catálogo
+        </label>
+      </div>
+    </div>
+
+    <!-- SEÇÃO MATERIAIS -->
+    <div class="materiais-toggle" style="${isPC ? 'display:none !important' : ''}" onclick="toggleSecaoVisivel('list-mat-${p.id}', 'seta-mat-${p.id}')">
+      <span>Materiais Utilizados</span><span id="seta-mat-${p.id}">▼</span>
+    </div>
+    <div class="materiais-content ${isPC ? 'aberto' : ''}" id="list-mat-${p.id}">
+      ${matRows}
+      <button class="prec-add-btn" onclick="adicionarMatPrec(${p.id})">＋ Adicionar material</button>
+    </div>
+
+    <!-- SEÇÃO PROCESSOS -->
+    <div class="processos-toggle" style="${isPC ? 'display:none !important' : ''}" onclick="toggleSecaoVisivel('list-proc-${p.id}', 'seta-proc-${p.id}')">
+      <span>Processos de Produção</span><span id="seta-proc-${p.id}">▼</span>
+    </div>
+    <div class="processos-content ${isPC ? 'aberto' : ''}" id="list-proc-${p.id}">
+      ${procRows}
+    </div>
+
+    <div class="prec-lucro-row">
+      <label>Tempo total (min)</label>
+      <input class="prec-lucro-input" type="number" value="${mins}" id="prec-tempo-${p.id}" oninput="atualizarTempoPrec(${p.id}, this.value)">
+      <label>Margem (%)</label>
+      <input class="prec-lucro-input" type="number" value="${d.lucro}" oninput="atualizarLucroPrec(${p.id}, this.value)">
+    </div>
+
+    <div class="prec-resultado">
+      <div class="prec-res-row"><span class="lbl">Custo Total Real</span><span class="val">${fmtR(r.custoTotalReal)}</span></div>
+      <div class="prec-res-row"><span class="lbl" style="color:var(--sage); font-weight:600;">Lucro Real</span><span class="val" style="color:var(--sage); font-weight:600;">${fmtR(r.valorLucro)}</span></div>
+      <div class="prec-res-total"><span class="lbl">Venda PIX</span><span class="val">${fmtR(r.precoBase)}</span></div>
+      <div class="prec-res-total"><span class="lbl" style="color:var(--brown)">Venda CARTÃO</span><span class="val" style="font-size:1.3rem; color:var(--brown)">${fmtR(r.precoCartao)}</span></div>
+    </div>
+  </div>`;
 };
 
 </script>

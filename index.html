@@ -381,7 +381,7 @@
   .ctab-td-total { font-family:'Calibri',serif; font-size:1.05rem; color:var(--brown); padding:0.65rem 0.9rem; text-align:center; white-space:nowrap; }
   .ctab-td-total-label { font-size:0.6rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); padding:0.65rem 0.8rem; position:sticky; left:0; background:white; white-space:nowrap; }
 
-/* --- ESTILOS DE TELA GRANDE (PC) --- */
+/* --- ESTILO FINAL CORRIGIDO PARA PC --- */
 @media (min-width: 1024px) {
   #prec-body {
     display: grid;
@@ -391,12 +391,7 @@
     padding: 1rem;
   }
 
-  .prec-peca-card {
-    margin-bottom: 0 !important;
-    height: 100%;
-  }
-
-  /* Container da tabela */
+  /* Ajuste do container para a tabela não esticar */
   #prec-resumo-container {
     grid-column: 1 / -1;
     display: flex;
@@ -404,39 +399,41 @@
     margin-bottom: 2rem;
   }
 
-  /* Tabela compacta com respiro */
-  #prec-resumo-container table {
-    width: auto !important; 
-    border-collapse: collapse;
+  /* Estilo para a "caixa" da tabela (que é uma div no seu JS) */
+  .prec-resumo-card {
+    width: auto !important;
+    min-width: 400px;
     background: rgba(184, 134, 42, 0.03);
+    border: 1px solid rgba(184, 134, 42, 0.15);
     border-radius: 8px;
     overflow: hidden;
   }
 
-  #prec-resumo-container tr {
+  /* Estilo para as linhas (que são divs .prec-resumo-row) */
+  .prec-resumo-row {
     display: flex !important;
     justify-content: space-between !important;
     align-items: center !important;
-    padding: 0.6rem 1.5rem;
-    border-bottom: 1px solid rgba(184, 134, 42, 0.05);
-    transition: background 0.2s;
+    padding: 0.6rem 1.2rem !important;
+    border-bottom: 1px solid rgba(184, 134, 42, 0.08);
   }
 
-  /* RESPIRO FORÇADO NO NOME (Para não colar no preço) */
-  #prec-resumo-container tr > *:first-child {
+  /* O NOME DA PEÇA (Primeiro span) */
+  .prec-resumo-nome {
     white-space: nowrap !important;
-    padding-right: 60px !important; /* Espaço de segurança de 60px */
+    padding-right: 60px !important; /* MURO DE SEGURANÇA */
     font-weight: 500;
     flex-shrink: 0;
   }
 
-  #prec-resumo-container tr > *:last-child {
+  /* O PREÇO (Segundo span) */
+  .prec-resumo-val {
     white-space: nowrap !important;
     text-align: right !important;
     margin-left: auto !important;
   }
 
-  #prec-resumo-container tr:hover {
+  .prec-resumo-row:hover {
     background: rgba(184, 134, 42, 0.08);
   }
 }

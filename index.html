@@ -383,34 +383,48 @@
 
 /* --- AJUSTE GLOBAL PC (VILLARE ATELIER) --- */
 @media (min-width: 1024px) {
+  /* Mantém as telas centralizadas e com largura controlada */
   .screen {
-    position: relative; /* Mudado de absolute para não flutuar */
+    position: relative;
     display: none;
     padding: 2rem;
-    width: 100%;
+    max-width: 1200px; /* Limita a largura para as colunas não ficarem muito longe */
+    margin: 0 auto !important; /* Centraliza o conteúdo na tela do PC */
   }
-  
+
   .screen.active {
     display: block !important;
   }
 
-  /* Garante que o menu inferior sempre tenha prioridade de clique */
-  .bottom-nav {
-    z-index: 999 !important;
-  }
-
-  /* Ajuste da Grid de Precificação para não esmagar o conteúdo */
-  #prec-body {
+  /* Força a grade de 3 colunas em todas as listas principais */
+  .metrics-grid, 
+  #contratos-list, 
+  #gastos-list, 
+  #prec-body,
+  #calendario-list,
+  #catalogo-list,
+  #proximos-list,
+  #financeiro-list {
     display: grid !important;
-    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)) !important;
+    grid-template-columns: repeat(3, 1fr) !important;
     gap: 1.5rem !important;
     align-items: start !important;
   }
 
-  /* Tabela de resumo fixa no topo ou ocupando largura total */
-  #prec-resumo-container {
+  /* Itens que devem ocupar a largura total (Títulos e Resumos) */
+  .section-title, 
+  .fin-totais, 
+  #prec-resumo-container,
+  #devedores-section,
+  .filter-row,
+  .producao-card {
     grid-column: 1 / -1 !important;
-    margin-bottom: 2rem;
+  }
+
+  /* Garante que o menu inferior não cubra o conteúdo final */
+  .bottom-nav {
+    z-index: 999 !important;
+    position: fixed;
   }
 }
 </style>

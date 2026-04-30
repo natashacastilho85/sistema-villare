@@ -1784,18 +1784,19 @@ function contratoCardHTML(c) {
   const devedor = isDevedor(c);
 
   let diasBadge = '';
+  let diasBadge = '';
   if (c.chegada && !['Concluído', 'Enviado'].includes(status)) {
     const chegada = new Date(c.chegada+'T12:00:00');
     const diasPassados = Math.floor((hoje - chegada)/(1000*60*60*24));
     
-    // Puxa o prazo que você configurou nos custos
     const prazoConfigurado = custosConfig.prazoProducao || 120;
     const restam = prazoConfigurado - diasPassados;
     
     const cor = restam <= 15 ? 'var(--bordeaux)' : restam <= 30 ? 'var(--gold)' : 'var(--sage)';
     const textoBadge = restam < 0 ? `${diasPassados}d · Atrasado!` : `${diasPassados}d passados · restam ${restam}`;
     
-    diasBadge = `<span style="font-size:0.55rem;letter-spacing:0.06em;padding:0.22rem 0.55rem;border-radius:20px;font-weight:600;white-space:nowrap;background:rgba(0,0,0,0.04);border:1px solid ${cor};color:${cor}">${textoBadge}</span>`;
+    // Adicionado text-transform: uppercase no style
+    diasBadge = `<span style="font-size:0.55rem;letter-spacing:0.08em;padding:0.22rem 0.55rem;border-radius:20px;font-weight:600;white-space:nowrap;background:rgba(0,0,0,0.04);border:1px solid ${cor};color:${cor};text-transform:uppercase">${textoBadge}</span>`;
   }
 
   const cardStyle = devedor ? 'background:rgba(122,37,53,0.08);border:1px solid rgba(122,37,53,0.4);' : '';
@@ -2832,10 +2833,12 @@ function openCustos() {
   document.getElementById('c-salario-mensal').value = custosConfig.salarioMensal || '';
   document.getElementById('c-horas-dia').value = custosConfig.horasPorDia || '';
   document.getElementById('c-dias-mes').value = custosConfig.diasPorMes || '';
-  document.getElementById('c-tarifa-cartao').value = custosConfig.tarifaCartao || '';
   
-  // CARREGA O PRAZO SALVO (Se não tiver nada salvo, usa 120 por padrão)
-  document.getElementById('c-prazo-producao').value = custosConfig.prazoProducao || 120;
+  const elTarifa = document.getElementById('c-tarifa-cartao');
+  if (elTarifa) elTarifa.value = custosConfig.tarifaCartao || '';
+  
+  const elPrazo = document.getElementById('c-prazo-producao');
+  if (elPrazo) elPrazo.value = custosConfig.prazoProducao || 120;
   
   renderItensFixos();
   renderProcessos();
@@ -2844,19 +2847,29 @@ function openCustos() {
 }
 
 function salvarCustos() {
-  custosConfig.salarioMensal = parseFloat(document.getElementById('c-salario-mensal').value) || 0;
-  custosConfig.horasPorDia = parseFloat(document.getElementById('c-horas-dia').value) || 0;
-  custosConfig.diasPorMes = parseFloat(document.getElementById('c-dias-mes').value) || 0;
-  custosConfig.tarifaCartao = parseFloat(document.getElementById('c-tarifa-cartao').value) || 6.99;
-  
-  // GRAVA O NOVO PRAZO
-  custosConfig.prazoProducao = parseInt(document.getElementById('c-prazo-producao').value) || 120;
-  
-  localStorage.setItem(CUSTOS_KEY, JSON.stringify(custosConfig));
+  try {
+    custosConfig.salarioMensal = parseFloat(document.getElementById('c-salario-mensal').value) || 0;
+    custosConfig.horasPorDia = parseFloat(document.getElementById('c-horas-dia').value) || 0;
+    custosConfig.diasPorMes = parseFloat(document.getElementById('c-dias-mes').value) || 0;
+    
+    const elTarifa = document.getElementById('c-tarifa-cartao');
+    if (elTarifa) custosConfig.tarifaCartao = parseFloat(elTarifa.value) || 6.99;
+    
+    const elPrazo = document.getElementById('c-prazo-producao');
+    if (elPrazo) custosConfig.prazoProducao = parseInt(elPrazo.value) || 120;
+    
+    // Salva na memória do navegador
+    localStorage.setItem('villare-custos', JSON.stringify(custosConfig));
 
-  closeDrawer('drawer-custos');
-  _renderPrecBody();
-  renderAll(); // Atualiza a tela para os cards puxarem o prazo novo na mesma hora
+    closeDrawer('drawer-custos');
+    
+    // Atualiza as telas
+    if (typeof window._renderPrecBody === 'function') window._renderPrecBody();
+    if (typeof renderAll === 'function') renderAll(); 
+    
+  } catch (erro) {
+    alert("Ops! Erro ao salvar: " + erro.message);
+  }
 }
 
 function renderProcessosPeca(pecaId, d) {

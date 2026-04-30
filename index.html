@@ -383,94 +383,34 @@
 
 /* --- AJUSTE GLOBAL PC (VILLARE ATELIER) --- */
 @media (min-width: 1024px) {
-  
-  /* Mantém apenas uma tela visível por vez */
   .screen {
-    position: absolute;
-    inset: 0;
+    position: relative; /* Mudado de absolute para não flutuar */
     display: none;
     padding: 2rem;
+    width: 100%;
   }
+  
   .screen.active {
     display: block !important;
   }
 
-  /* 1. GRIDS DE 3 COLUNAS (Início, Contratos, Gastos, Catálogo, Calendário) */
-  /* Adicionei os IDs das listas que você mencionou estarem "enormes" */
-  .metrics-grid, 
-  #contratos-list, 
-  #gastos-list, 
-  #prec-body,
-  #calendario-list,
-  #catalogo-list,
-  #proximos-list,
-  #financeiro-list {
+  /* Garante que o menu inferior sempre tenha prioridade de clique */
+  .bottom-nav {
+    z-index: 999 !important;
+  }
+
+  /* Ajuste da Grid de Precificação para não esmagar o conteúdo */
+  #prec-body {
     display: grid !important;
-    grid-template-columns: repeat(3, 1fr) !important;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)) !important;
     gap: 1.5rem !important;
     align-items: start !important;
   }
 
-  /* 2. TELA DE DADOS (Comparativos) - 2 colunas para as tabelas ficarem legíveis */
-  #screen-comparativos {
-    display: grid !important;
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 2rem !important;
-  }
-
-  /* 3. LARGURA TOTAL (Títulos, Produção, Resumos, Filtros) */
-  .section-title, 
-  .fin-totais, 
-  #prec-resumo-container,
-  #devedores-section,
-  .filter-row,
-  .producao-card {
+  /* Tabela de resumo fixa no topo ou ocupando largura total */
+  #prec-resumo-container {
     grid-column: 1 / -1 !important;
-  }
-
-  /* 4. AJUSTE ESPECIAL: PRECIFICAÇÃO (Ocupa a tela toda) */
-  #drawer-prec .drawer {
-    max-width: 95% !important;
-    width: 95% !important;
-  }
-
-  /* 5. AJUSTE PARA OUTROS DRAWERS (Ficam centralizados e elegantes) */
-  #drawer-new .drawer, #drawer-mat-novo .drawer, #drawer-custos .drawer {
-    max-width: 800px !important;
-    margin: 0 auto !important;
-    left: 50% !important;
-    transform: translateX(-50%) translateY(100%) !important;
-  }
-  .drawer-overlay.open .drawer {
-    transform: translateX(-50%) translateY(0) !important;
-  }
-
-  /* 6. TABELA COMPACTA COM RESPIRO (Nomes e Preços) */
-  .prec-resumo-card {
-    width: auto !important;
-    min-width: 450px;
-    background: rgba(184, 134, 42, 0.03);
-    border: 1px solid rgba(184, 134, 42, 0.15);
-    border-radius: 8px;
-  }
-
-  .prec-resumo-row {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    padding: 0.6rem 1.2rem !important;
-  }
-
-  .prec-resumo-nome {
-    white-space: nowrap !important;
-    padding-right: 60px !important; 
-    font-weight: 500;
-  }
-
-  .prec-resumo-val {
-    white-space: nowrap !important;
-    text-align: right !important;
-    margin-left: auto !important;
+    margin-bottom: 2rem;
   }
 }
 </style>

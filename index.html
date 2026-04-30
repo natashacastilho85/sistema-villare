@@ -1052,6 +1052,7 @@
   <div class="drawer" onclick="event.stopPropagation()" style="max-height:95vh">
     <div class="drawer-handle"></div>
     <div class="drawer-title">⚙️ Custos fixos e salário</div>
+    
     <div class="field-group">
       <label class="field-label">Salário mensal desejado (R$)</label>
       <input class="field-input" id="c-salario-mensal" type="number" step="0.01" min="0" placeholder="Ex: 3000,00" oninput="atualizarPreviewCustos()">
@@ -1067,21 +1068,35 @@
       </div>
     </div>
     <div id="c-salario-hora-preview" style="font-size:0.78rem;color:var(--muted);margin:-0.4rem 0 1rem;padding:0 0.2rem"></div>
-    <div style="font-size:0.8rem;color:var(--brown);font-weight:600;margin-bottom:0.5rem;margin-top:0.4rem">Custos fixos mensais</div>
-    <div id="c-fixos-list"></div>
-    <button onclick="adicionarItemFixo()" style="width:100%;background:transparent;border:1px dashed rgba(184,134,42,0.35);border-radius:6px;padding:0.6rem;color:var(--brown);font-size:0.78rem;cursor:pointer;margin-bottom:1rem">＋ Adicionar item</button>
-    <div id="c-fixos-total-preview" style="font-size:0.78rem;color:var(--muted);margin-bottom:1rem;padding:0 0.2rem"></div>
-    <div class="field-group">
-      <label class="field-label">Tarifa do cartão (%)</label>
-      <input class="field-input" id="c-tarifa-cartao" type="number" step="0.01" min="0" max="30" placeholder="Ex: 7">
-    </div>
-    <div id="c-resumo-hora" style="background:rgba(184,134,42,0.06);border:1px solid rgba(184,134,42,0.15);border-radius:8px;padding:0.8rem 1rem;margin-bottom:1rem;font-size:0.82rem;color:var(--dark);line-height:1.7"></div>
 
-    <div style="font-size:0.8rem;color:var(--brown);font-weight:600;margin-bottom:0.3rem;margin-top:0.2rem">Processos de produção</div>
-    <div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.6rem">Defina os processos e o tempo médio de cada um. O total será sugerido como tempo de produção das peças.</div>
-    <div id="c-processos-list"></div>
-    <button onclick="adicionarProcesso()" style="width:100%;background:transparent;border:1px dashed rgba(184,134,42,0.35);border-radius:6px;padding:0.6rem;color:var(--brown);font-size:0.78rem;cursor:pointer;margin-bottom:0.5rem">＋ Adicionar processo</button>
-    <div id="c-processos-total" style="font-size:0.78rem;color:var(--muted);margin-bottom:1rem;padding:0 0.2rem"></div>
+    <!-- ENVOLVE AS DUAS COLUNAS -->
+    <div class="custos-colunas-wrapper">
+      
+      <!-- COLUNA DA ESQUERDA: Fixos e Tarifa -->
+      <div class="custos-coluna">
+        <div style="font-size:0.8rem;color:var(--brown);font-weight:600;margin-bottom:0.5rem;margin-top:0.4rem">Custos fixos mensais</div>
+        <div id="c-fixos-list"></div>
+        <button onclick="adicionarItemFixo()" style="width:100%;background:transparent;border:1px dashed rgba(184,134,42,0.35);border-radius:6px;padding:0.6rem;color:var(--brown);font-size:0.78rem;cursor:pointer;margin-bottom:1rem">＋ Adicionar item</button>
+        <div id="c-fixos-total-preview" style="font-size:0.78rem;color:var(--muted);margin-bottom:1rem;padding:0 0.2rem"></div>
+
+        <div class="field-group">
+          <label class="field-label">Tarifa do cartão (%)</label>
+          <input class="field-input" id="c-tarifa-cartao" type="number" step="0.01" min="0" max="30" placeholder="Ex: 7" oninput="atualizarPreviewCustos()">
+        </div>
+        <div id="c-resumo-hora" style="background:rgba(184,134,42,0.06);border:1px solid rgba(184,134,42,0.15);border-radius:8px;padding:0.8rem 1rem;margin-bottom:1rem;font-size:0.82rem;color:var(--dark);line-height:1.7"></div>
+      </div>
+
+      <!-- COLUNA DA DIREITA: Processos -->
+      <div class="custos-coluna">
+        <div style="font-size:0.8rem;color:var(--brown);font-weight:600;margin-bottom:0.3rem;margin-top:0.2rem">Processos de produção</div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.6rem">Defina os processos e o tempo médio de cada um. O total será sugerido como tempo de produção das peças.</div>
+        <div id="c-processos-list"></div>
+        <button onclick="adicionarProcesso()" style="width:100%;background:transparent;border:1px dashed rgba(184,134,42,0.35);border-radius:6px;padding:0.6rem;color:var(--brown);font-size:0.78rem;cursor:pointer;margin-bottom:0.5rem">＋ Adicionar processo</button>
+        <div id="c-processos-total" style="font-size:0.78rem;color:var(--muted);margin-bottom:1rem;padding:0 0.2rem"></div>
+      </div>
+
+    </div>
+
     <button class="btn-primary" onclick="salvarCustos()">💾 Salvar</button>
     <button class="btn-secondary" onclick="closeDrawer('drawer-custos')">Fechar</button>
   </div>

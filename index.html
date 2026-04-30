@@ -2622,11 +2622,12 @@ async function saveEditContrato() {
   dados.pecas = pecasSel;
   dados.valor_bruto = Math.max(0, valorBruto - dados.desconto);
 
-  // Coleta os dados da ficha na edição
+  // Coleta os dados da ficha na edição (AGORA COM O CAMPO BUQUÊ INCLUÍDO)
   dados.ficha_producao = {
     nomeNoiva: document.getElementById('e-f-noiva').value,
     nomeNoivo: document.getElementById('e-f-noivo').value,
     instagram: document.getElementById('e-f-insta').value,
+    quemFezBuque: document.getElementById('e-f-buque').value, 
     cerimonialista: document.getElementById('e-f-cerimonial').value,
     quemIndicou: document.getElementById('e-f-indicacao').value,
     iniciaisData: document.getElementById('e-f-iniciais').value,

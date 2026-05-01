@@ -343,7 +343,7 @@
   /* ── DRAWERS ── */
   .drawer-overlay { position:fixed; inset:0; background:rgba(42,26,14,0.45); z-index:var(--drawer-z, 200); display:none; backdrop-filter:blur(3px); }
   .drawer-overlay.open { display:block; }
-  .drawer { position:fixed; bottom:0; left:0; right:0; background:var(--warm-white); border-top:1px solid rgba(184,134,42,0.2); border-radius:16px 16px 0 0; padding:1.5rem 1.2rem; padding-bottom:calc(1.5rem + env(safe-area-inset-bottom)); z-index:calc(var(--drawer-z, 200) + 1); transform:translateY(100%); transition:transform 0.3s cubic-bezier(0.32,0.72,0,1); max-height:90vh; overflow-y:auto; }
+  .drawer { position:fixed; bottom:0; left:0; right:0; background:var(--warm-white); border-top:1px solid rgba(184,134,42,0.2); border-radius:16px 16px 0 0; padding:1.5rem 1.2rem; padding-bottom:calc(3rem + env(safe-area-inset-bottom)); z-index:calc(var(--drawer-z, 200) + 1); transform:translateY(100%); transition:transform 0.3s cubic-bezier(0.32,0.72,0,1); max-height:90vh; overflow-y:auto; }
   .drawer-overlay.open .drawer { transform:translateY(0); }
   .drawer-handle { width:40px; height:4px; background:rgba(184,134,42,0.22); border-radius:2px; margin:0 auto 1.2rem; }
   .drawer-title { font-family:'Calibri',serif; font-size:1.4rem; color:var(--dark); margin-bottom:1.2rem; }
@@ -1664,20 +1664,21 @@ window.addEventListener('popstate', () => {
     return;
   }
   if (_drawerStack.length > 0) {
-    // Fecha o drawer mais recente
+    // Fecha o drawer mais recente — instantâneo para evitar embaçamento no Android
     const id = _drawerStack.pop();
     const el = document.getElementById(id);
     if (el) {
       el.classList.remove('open');
+      el.style.display = 'none'; // Fecha imediatamente, sem aguardar animação
       el.style.removeProperty('--drawer-z');
     }
     if (_drawerStack.length === 0) _zDrawerAtual = 200;
     else _zDrawerAtual = Math.max(200, _zDrawerAtual - 10);
   }
-  // Sempre reinsere uma entrada raiz com pushState — o popstate JÁ consumiu
-  // a entrada anterior, então replaceState não é suficiente. Com pushState,
-  // o próximo "voltar" do Android dispara outro popstate (em vez de fechar o app).
-  history.pushState({ villare: 'root' }, '');
+  // replaceState mantém a posição atual do history sem criar nova entrada.
+  // Assim o próximo "voltar" do Android dispara outro popstate, e quando
+  // não há mais drawers abertos, não fecha o app — fica na raiz.
+  history.replaceState({ villare: 'root' }, '');
 });
 
 // Ao carregar: estabelece a entrada raiz inicial
@@ -1979,8 +1980,8 @@ function contratoCardHTML(c) {
       <div class="contract-pieces">${pecasStr}</div>
       <div style="text-align:right">
         <div class="contract-value">R$ ${c.valorBruto.toLocaleString('pt-BR',{minimumFractionDigits:0})}</div>
-        ${c.formaPag !== 'reserva' && totalEntradaCaixa(c) > 0 && Math.abs(c.valorBruto - totalEntradaCaixa(c)) > 0.5 ? `<div style="font-size:0.58rem;color:var(--muted-light);margin-top:0.05rem">caixa R$ ${totalEntradaCaixa(c).toLocaleString('pt-BR',{minimumFractionDigits:0})}</div>` : ''}
-        <div class="contract-saldo" style="${saldo<=0?'color:var(--sage)':devedor?'color:var(--bordeaux);font-weight:600':''}">${saldo>0?'R$ '+saldo.toFixed(2).replace('.',',')+ ' a receber':'Pago ✓'}</div>
+        ${pago > 0 ? `<div style="font-size:0.62rem;color:var(--sage);margin-top:0.05rem">R$ ${pago.toLocaleString('pt-BR',{minimumFractionDigits:0})} pago</div>` : ''}
+        <div class="contract-saldo" style="${saldo<=0?'color:var(--sage)':devedor?'color:var(--bordeaux);font-weight:600':''}">${saldo>0.01?'R$ '+saldo.toFixed(2).replace('.',',')+ ' a receber':'Pago ✓'}</div>
       </div>
     </div>
   </div>`;
@@ -4091,7 +4092,7 @@ function abrirFichaProducao(id) {
   `).join('');
 
   // Fecha clicando no overlay (fora do drawer)
-  drawer.onclick = (e) => { if (e.target === drawer) closeDrawer('drawer-ficha'); };
+  drawer.onclick = (e) => { if (e.target === drawer) { closeDrawer('drawer-ficha'); if (fichaContratoId) openDetail(fichaContratoId); } };
 
   drawer.innerHTML = `
     <div class="drawer" onclick="event.stopPropagation()">
@@ -4127,7 +4128,7 @@ function abrirFichaProducao(id) {
       </div>
 
       <button class="btn-primary" onclick="salvarEImprimirFicha()">Salvar e Imprimir</button>
-      <button class="btn-secondary" onclick="closeDrawer('drawer-ficha')" style="margin-top:0.4rem">Fechar</button>
+      <button class="btn-secondary" onclick="closeDrawer('drawer-ficha');if(fichaContratoId)openDetail(fichaContratoId);" style="margin-top:0.4rem">Fechar</button>
     </div>
   `;
   closeDrawer('drawer-detail');

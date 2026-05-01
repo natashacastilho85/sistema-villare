@@ -558,60 +558,33 @@
 }
 
 @media (max-width: 600px) {
-    /* Topo do Card: Tempo, Lucro e Perda lado a lado */
     .prec-ajustes-topo {
-        display: flex !important;
-        flex-direction: row !important;
-        gap: 8px !important;
-        padding: 10px 12px !important;
+        grid-template-columns: 1fr; /* 1 coluna no celular para não esmagar */
     }
-    .ajuste-item { flex: 1; min-width: 0; }
-    .ajuste-item input { width: 100%; font-size: 0.85rem; padding: 8px 4px; }
+}
 
-    /* Catálogo: Nome na esquerda, preços empilhados na direita */
-    .prec-lista-item {
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        padding: 12px 15px !important;
-    }
-    .valores-stack {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        flex-shrink: 0;
-    }
-}
-/* --- ESTILO PARA TODOS (COMPUTADOR) --- */
-.piece-card {
+.ajuste-item {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px;
-    border-bottom: 1px solid rgba(184,134,42,0.1);
+    flex-direction: column;
 }
-.piece-values {
-    display: flex;
-    gap: 15px; /* Lado a lado no computador */
-    align-items: center;
-}
-.val-pix { font-size: 0.85rem; color: #888; }
-.val-cartao { font-weight: bold; color: var(--brown); }
 
-/* --- APENAS PARA CELULAR (A MÁGICA) --- */
-@media (max-width: 600px) {
-    .piece-card {
-        padding: 12px 10px;
-    }
-    .piece-values {
-        flex-direction: column; /* Empilha no celular */
-        align-items: flex-end;
-        gap: 2px;
-    }
-    .val-pix { font-size: 0.65rem; }
-    .val-cartao { font-size: 0.95rem; }
+.ajuste-item label {
+    font-size: 0.65rem;
+    color: #888;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    font-weight: bold;
 }
-  
+
+.ajuste-item input {
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 0.95rem;
+    color: #5d4037;
+    background: white;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+}
 </style>
 </head>
 <body>
@@ -2227,29 +2200,34 @@ async function excluirGasto() {
   } catch(e) { alert('Erro ao excluir gasto: '+e.message); }
 }
 
+// ── CATÁLOGO ──
 function renderCatalogo() {
   const pecasCatalogo = [...pecas]
     .filter(p => getPrecPeca(p.id).exibirCatalogo !== false)
-    .sort((a, b) => (getPrecoPecaCalculado(a.id) || 0) - (getPrecoPecaCalculado(b.id) || 0));
-
+    .sort((a, b) => {
+      const pa = getPrecoPecaCalculado(a.id) || 0;
+      const pb = getPrecoPecaCalculado(b.id) || 0;
+      return pa - pb;
+    });
   const html = pecasCatalogo.length ? pecasCatalogo.map(p => {
-    const precoCartao = getPrecoPecaCalculado(p.id) || 0;
-    const precoPix = precoCartao * 0.93; 
-    const fmtR = v => 'R$ ' + (parseFloat(v)||0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-
-    return `
-    <div class="piece-card" onclick="openPeca(${p.id})">
-      <div class="piece-info">
+    const precoCartao = getPrecoPecaCalculado(p.id);
+    
+    // CORREÇÃO: Formatação cravada em 2 casas decimais para exibir como R$ 0,00
+    const precoFmt = precoCartao
+      ? 'R$ ' + precoCartao.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})
+      : '—';
+      
+    return `<div class="piece-card" onclick="openPeca(${p.id})">
+      <div>
         <div class="piece-name">${p.nome}</div>
-        ${p.desc ? `<div class="piece-desc">${p.desc}</div>` : ''}
+        ${p.desc?`<div style="font-size:0.65rem;color:var(--muted);margin-top:0.15rem">${p.desc}</div>`:''}
       </div>
-      <div class="piece-values">
-        <span class="val-pix">Pix ${fmtR(precoPix)}</span>
-        <span class="val-cartao">${fmtR(precoCartao)}</span>
+      <div style="display:flex;align-items:center;gap:0.6rem">
+        <div class="piece-price">${precoFmt}</div>
+        <div style="color:var(--muted-light);font-size:0.85rem">✏️</div>
       </div>
     </div>`;
-  }).join('') : '<div class="cal-empty">Nenhuma peça cadastrada</div>';
-
+  }).join('') : `<div class="cal-empty">Nenhuma peça cadastrada</div>`;
   const scr = document.getElementById('catalogo-list');
   const drw = document.getElementById('catalogo-drawer-list');
   if (scr) scr.innerHTML = html;
@@ -3601,37 +3579,6 @@ function atualizarTempoPrec(pecaId, val) {
   renderCatalogo();
 }
 
-window.atualizarTempoProcPrec = function(pecaId, idx, val) {
-    const d = getPrecPeca(pecaId);
-    
-    // 1. Cria a gaveta de minutos editados se ela não existir
-    if (!d.processosMins) d.processosMins = [];
-    
-    // 2. Salva o que você acabou de digitar no processo específico
-    d.processosMins[idx] = parseFloat(val) || 0;
-    
-    // 3. Pega a lista de processos que está lá nos "Custos Globais"
-    const procsGlobais = custosConfig.processos || [];
-    
-    // 4. Faz a soma: usa o seu valor editado OU o valor que veio do Global
-    const soma = procsGlobais.reduce((acc, p, i) => {
-        const valorFinal = (d.processosMins[i] !== undefined) ? d.processosMins[i] : (parseFloat(p.mins || p.tempo) || 0);
-        return acc + valorFinal;
-    }, 0);
-    
-    // 5. Atualiza o tempo total da peça com essa soma
-    d.tempo = soma; 
-    d._tempoEditado = false; // Importante: avisa que agora o tempo vem da soma, não do manual
-    
-    // 6. Atualiza a caixinha visual de "Tempo (min)" no card
-    const inputTempo = document.getElementById('prec-tempo-' + pecaId);
-    if (inputTempo) inputTempo.value = soma;
-    
-    // 7. Manda o sistema calcular os custos e salvar
-    recalcularCard(pecaId);
-    if (typeof salvarPrecLocal === 'function') salvarPrecLocal();
-};
-  
 function atualizarLucroPrec(pecaId, val) {
   const d = getPrecPeca(pecaId);
   d.lucro = parseFloat(val) || 0;
@@ -4364,24 +4311,16 @@ window.renderPrecCard = function(p, d, valorHora, custoFixoHora, cardIdx) {
   const fmtR = v => 'R$ ' + (parseFloat(v)||0).toLocaleString('pt-BR', {minimumFractionDigits:2});
   const isPC = window.innerWidth >= 1024;
 
-  // Dentro da renderPrecCard, na parte que gera as linhas de materiais:
-let matRows = (d.materiais || []).map((m, i) => {
-    let matNome = m.nome; let matUn = "un";
+  // Renderização das linhas de Materiais
+  let matRows = (d.materiais || []).map((m, i) => {
     if (m.matGlobalId) {
-        const matG = (typeof matGlobais !== 'undefined') ? matGlobais.find(x => x.id === m.matGlobalId) : null;
-        if (matG) { matNome = matG.nome; matUn = matG.unidade; }
+      const matG = (typeof matGlobais !== 'undefined') ? matGlobais.find(x => x.id === m.matGlobalId) : null;
+      if (matG) {
+        return `<div class="prec-mat-row prec-mat-row-qtd"><span class="prec-mat-nome">${matG.nome}</span><div class="prec-mat-qtd-wrap"><input class="prec-mat-qtd-input" type="number" step="0.01" value="${m.qtdUsada || ''}" oninput="atualizarQtdMatPrec(${p.id}, ${i}, this.value)"><span class="prec-mat-unit">${matG.unidade}</span></div><span class="prec-mat-custo-calc">${m.valor > 0 ? fmtR(m.valor) : '—'}</span></div>`;
+      }
     }
-    return `
-      <div style="display: flex; align-items: center; padding: 12px 15px; border-bottom: 1px dashed rgba(184,134,42,0.1); gap: 8px;">
-        <div style="flex: 1 1 auto; font-size: 0.75rem; color: var(--brown); font-weight: 600; line-height: 1.2;">${matNome}</div>
-        <div style="flex: 0 0 70px; display: flex; align-items: center;">
-          <input type="number" step="0.01" value="${m.qtdUsada || ''}" oninput="atualizarQtdMatPrec(${p.id}, ${i}, this.value)" style="width: 45px; text-align: center; font-size: 0.8rem; padding: 4px; border: 1px solid #ddd; border-radius: 4px;">
-          <span style="font-size: 0.7rem; color: #666; margin-left: 4px; width: 16px;">${matUn}</span>
-        </div>
-        <div style="flex: 0 0 75px; font-size: 0.75rem; text-align: left; color: #5c3318;">${m.valor > 0 ? fmtR(m.valor) : '—'}</div>
-        <button onclick="removerMatPrec(${p.id}, ${i})" style="flex: 0 0 20px; color: #bca085; background: none; border: none; font-size: 1.1rem; cursor: pointer; text-align: right;">×</button>
-      </div>`;
-}).join('');
+    return `<div class="prec-mat-row"><span class="prec-mat-nome">${m.nome}</span><input class="prec-mat-input" type="number" value="${m.valor > 0 ? m.valor.toFixed(2) : ''}" oninput="atualizarMatPrec(${p.id}, ${i}, this.value)"></div>`;
+  }).join('');
 
   // Renderização das linhas de Processos
   let procRows = listaProcessos.map((proc, i) => {

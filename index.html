@@ -549,41 +549,48 @@
 }
 /* --- AJUSTE VISUAL RESPONSIVO (VILLARE) --- */
 .prec-ajustes-topo {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr); /* 3 colunas no computador */
-    gap: 12px;
-    padding: 15px;
+    display: flex;
+    flex-direction: row;
+    gap: 15px;
+    padding: 12px;
     background: #fdfdfd;
     border-bottom: 1px solid #eee;
-}
-
-@media (max-width: 600px) {
-    .prec-ajustes-topo {
-        grid-template-columns: 1fr; /* 1 coluna no celular para não esmagar */
-    }
+    flex-wrap: wrap; /* Garante que não quebre no celular */
 }
 
 .ajuste-item {
     display: flex;
-    flex-direction: column;
+    align-items: center; /* Alinha label e input na mesma linha */
+    gap: 8px;
 }
 
 .ajuste-item label {
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     color: #888;
     text-transform: uppercase;
-    margin-bottom: 4px;
     font-weight: bold;
+    white-space: nowrap;
 }
 
 .ajuste-item input {
     border: 1px solid #ddd;
-    border-radius: 6px;
-    padding: 8px;
-    font-size: 0.95rem;
+    border-radius: 4px;
+    padding: 4px 6px;
+    font-size: 0.9rem;
     color: #5d4037;
     background: white;
-    box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+    width: 60px; /* Tamanho fixo para poucos caracteres */
+    text-align: center;
+}
+
+@media (max-width: 600px) {
+    .prec-ajustes-topo {
+        gap: 10px;
+    }
+    .ajuste-item {
+        width: 100%; /* No celular, cada um ocupa uma linha para facilitar o toque */
+        justify-content: space-between;
+    }
 }
 </style>
 </head>

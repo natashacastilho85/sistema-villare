@@ -822,7 +822,7 @@
     </div>
     <div class="field-group" id="grp-pago-reserva" style="display:none">
       <label class="field-label">Entrada já recebida (R$)</label>
-      <input class="field-input" id="c-pago" type="number" placeholder="Mín. R$ 300,00" step="0.01" min="0">
+      <input class="field-input" id="c-pago" type="number" placeholder="Mín. R$ 300,00" step="1" min="0">
       <div class="field-hint visible" style="font-size:0.65rem;color:var(--muted);margin-top:0.3rem">O restante fica em aberto. Você poderá registrar mais pagamentos depois, no detalhe do contrato.</div>
     </div>
     <div id="grp-pago-misto" style="display:none">
@@ -996,6 +996,32 @@
       <label class="field-label">Desconto (R$)</label>
       <input class="field-input" id="e-desconto" type="number" placeholder="0,00" step="0.01" min="0">
     </div>
+    <div id="e-grp-pago-reserva" style="display:none">
+      <div class="field-group">
+        <label class="field-label">Entrada já recebida (R$)</label>
+        <input class="field-input" id="e-pago" type="number" placeholder="Mín. R$ 300,00" step="1" min="0">
+        <div class="field-hint visible" style="font-size:0.65rem;color:var(--muted);margin-top:0.3rem">Valor que a noiva já pagou de entrada. Sem descontos.</div>
+      </div>
+    </div>
+    <div id="e-grp-pago-misto" style="display:none">
+      <div class="field-row">
+        <div class="field-group">
+          <label class="field-label">Pago em Pix (R$)</label>
+          <input class="field-input" id="e-pago-pix" type="number" placeholder="0,00" step="0.01" min="0">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Pago em Cartão (R$)</label>
+          <input class="field-input" id="e-pago-cartao" type="number" placeholder="0,00" step="0.01" min="0">
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Parcelas no cartão</label>
+        <select class="field-input" id="e-pago-cartao-parc">
+          <option value="3">Até 3× (taxa 7,01%)</option>
+          <option value="4">4× ou mais (sem taxa)</option>
+        </select>
+      </div>
+    </div>
 
     <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(184,134,42,0.2);">
   <div style="font-family:'Calibri',serif; font-size: 1.1rem; color: var(--brown); margin-bottom: 1rem;">Dados da Ficha de Produção</div>
@@ -1029,10 +1055,12 @@
   <div style="height: 50px;"></div>
 </div>
 
-<button type="button" class="btn-primary" style="background:rgba(107,143,113,0.1); color:var(--sage); border:1px solid rgba(107,143,113,0.3); margin-top: 0.5rem;" onclick="imprimirFichaPeloForm('e')">🖨️ Imprimir Ficha Agora</button>
-<button class="btn-primary" onclick="saveEditContrato()">Salvar alterações</button>
-<button class="btn-secondary" onclick="fecharEditContrato()">Cancelar</button>
-<button onclick="excluirContrato()" style="width:100%;background:transparent;border:1px solid rgba(122,37,53,0.3);border-radius:4px;padding:0.75rem;color:var(--bordeaux);font-family:'Calibri',sans-serif;font-size:0.75rem;cursor:pointer;margin-top:0.4rem">Excluir contrato</button>
+    <button type="button" class="btn-primary" style="background:rgba(107,143,113,0.1); color:var(--sage); border:1px solid rgba(107,143,113,0.3); margin-top: 0.5rem;" onclick="imprimirFichaPeloForm('e')">🖨️ Imprimir Ficha Agora</button>
+    <button class="btn-primary" onclick="saveEditContrato()">Salvar alterações</button>
+    <button class="btn-secondary" onclick="fecharEditContrato()">Cancelar</button>
+    <button onclick="excluirContrato()" style="width:100%;background:transparent;border:1px solid rgba(122,37,53,0.3);border-radius:4px;padding:0.75rem;color:var(--bordeaux);font-family:'Calibri',sans-serif;font-size:0.75rem;cursor:pointer;margin-top:0.4rem">Excluir contrato</button>
+  </div><!-- fim .drawer -->
+</div><!-- fim #drawer-edit -->
 
 <!-- DRAWER NOVO PAGAMENTO -->
 <div class="drawer-overlay" id="drawer-pag" onclick="closeDrawer('drawer-pag')">
@@ -1950,8 +1978,8 @@ function contratoCardHTML(c) {
     <div class="contract-footer">
       <div class="contract-pieces">${pecasStr}</div>
       <div style="text-align:right">
-        <div class="contract-value">R$ ${totalEntradaCaixa(c) > 0 ? totalEntradaCaixa(c).toLocaleString('pt-BR',{minimumFractionDigits:0}) : c.valorBruto.toLocaleString('pt-BR',{minimumFractionDigits:0})}</div>
-        ${totalEntradaCaixa(c) > 0 && Math.abs(c.valorBruto - totalEntradaCaixa(c)) > 0.5 ? `<div style="font-size:0.58rem;color:var(--muted-light);margin-top:0.05rem">bruto R$ ${c.valorBruto.toLocaleString('pt-BR',{minimumFractionDigits:0})}</div>` : ''}
+        <div class="contract-value">R$ ${c.valorBruto.toLocaleString('pt-BR',{minimumFractionDigits:0})}</div>
+        ${c.formaPag !== 'reserva' && totalEntradaCaixa(c) > 0 && Math.abs(c.valorBruto - totalEntradaCaixa(c)) > 0.5 ? `<div style="font-size:0.58rem;color:var(--muted-light);margin-top:0.05rem">caixa R$ ${totalEntradaCaixa(c).toLocaleString('pt-BR',{minimumFractionDigits:0})}</div>` : ''}
         <div class="contract-saldo" style="${saldo<=0?'color:var(--sage)':devedor?'color:var(--bordeaux);font-weight:600':''}">${saldo>0?'R$ '+saldo.toFixed(2).replace('.',',')+ ' a receber':'Pago ✓'}</div>
       </div>
     </div>
@@ -4201,24 +4229,24 @@ function gerarImpressaoFicha(c, f) {
   <meta charset="UTF-8">
   <title>Ficha · ${c.nome}</title>
   <style>
-    @page { size: A5; margin: 10mm 12mm; }
+    @page { size: A5 portrait; margin: 6mm 10mm; }
     * { box-sizing: border-box; }
-    body { font-family: 'Calibri', Arial, sans-serif; color: #333; font-size: 11px; line-height: 1.4; margin: 0; padding: 0; }
-    .header { text-align: center; border-bottom: 2px solid #B8862A; padding-bottom: 8px; margin-bottom: 10px; }
-    .header h1 { margin: 0; font-size: 18px; color: #4A3320; letter-spacing: 2px; }
-    .header p { margin: 2px 0 0; font-size: 8px; color: #999; text-transform: uppercase; letter-spacing: 3px; }
-    .row { display: flex; justify-content: space-between; border-bottom: 1px solid #f0ece6; padding: 4px 0; }
-    .label { font-weight: 600; color: #4A3320; width: 38%; flex-shrink:0 }
-    .value { color: #222; }
-    .badges { display: flex; gap: 8px; margin: 8px 0; }
-    .badge { flex:1; background: #faf9f7; padding: 6px 8px; text-align: center; border: 1px solid #e8e3dc; border-radius: 4px; }
-    .badge strong { display:block; font-size:9px; color:#888; text-transform:uppercase; letter-spacing:1px; margin-bottom:3px }
-    .badge span { font-size: 14px; color: #4A3320; font-weight: 600; }
-    .section-title { font-size: 9px; font-weight: 700; color: #B8862A; text-transform: uppercase; letter-spacing: 1px; margin: 10px 0 4px; border-top: 1px solid #f0ece6; padding-top: 6px; }
-    .total-row { display:flex; justify-content:space-between; margin-top:6px; padding-top:6px; border-top:2px solid #B8862A; }
-    .total-row .lbl { font-weight:700; color:#4A3320; }
-    .total-row .val { font-size:13px; font-weight:700; color:#4A3320; }
-    .obs-box { margin-top:8px; background:#faf9f7; border:1px solid #e8e3dc; border-radius:4px; padding:6px 8px; min-height:36px; white-space:pre-wrap; }
+    body { font-family: 'Calibri', Arial, sans-serif; color: #333; font-size: 10px; line-height: 1.35; margin: 0; padding: 0; }
+    .header { text-align: center; border-bottom: 1.5px solid #B8862A; padding-bottom: 5px; margin-bottom: 7px; }
+    .header h1 { margin: 0; font-size: 15px; color: #4A3320; letter-spacing: 2px; }
+    .header p { margin: 1px 0 0; font-size: 7px; color: #999; text-transform: uppercase; letter-spacing: 3px; }
+    .row { display: flex; justify-content: space-between; border-bottom: 1px solid #f0ece6; padding: 2.5px 0; }
+    .label { font-weight: 600; color: #4A3320; width: 36%; flex-shrink:0; }
+    .value { color: #222; text-align:right; }
+    .badges { display: flex; gap: 6px; margin: 6px 0; }
+    .badge { flex:1; background: #faf9f7; padding: 4px 6px; text-align: center; border: 1px solid #e8e3dc; border-radius: 3px; }
+    .badge strong { display:block; font-size:7px; color:#888; text-transform:uppercase; letter-spacing:1px; margin-bottom:2px; }
+    .badge span { font-size: 12px; color: #4A3320; font-weight: 700; }
+    .section-title { font-size: 8px; font-weight: 700; color: #B8862A; text-transform: uppercase; letter-spacing: 1px; margin: 7px 0 3px; border-top: 1px solid #f0ece6; padding-top: 4px; }
+    .total-row { display:flex; justify-content:space-between; margin-top:4px; padding-top:4px; border-top:1.5px solid #B8862A; }
+    .total-row .lbl { font-weight:700; color:#4A3320; font-size:11px; }
+    .total-row .val { font-size:12px; font-weight:700; color:#4A3320; }
+    .obs-box { margin-top:5px; background:#faf9f7; border:1px solid #e8e3dc; border-radius:3px; padding:4px 6px; min-height:28px; white-space:pre-wrap; font-size:10px; }
   </style>
 </head>
 <body onload="setTimeout(function(){window.print();},400)">

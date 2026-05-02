@@ -1742,7 +1742,10 @@ async function saveContrato() {
     obsGeral: document.getElementById('c-f-obs-geral').value
   };
 
-  const valorFinal = Math.max(0, valorBruto - desconto);
+  // Aplica desconto Pix no valorFinal (noiva paga 7% menos)
+  let valorFinal = Math.max(0, valorBruto - desconto);
+  if (formaPag === 'pix') valorFinal = round2(valorFinal * (1 - TAXA_PIX_DESC));
+
   const pagamentosIni = gerarPagamentosIniciais(formaPag, valorFinal);
 
   try {
@@ -1759,7 +1762,8 @@ async function saveContrato() {
 function gerarPagamentosIniciais(forma, valor) {
   const hoje = new Date().toISOString().split('T')[0];
   if (forma === 'pix') {
-    return [{ data: hoje, valor: valor, forma: 'Pix', status: 'Realizado' }];
+    // valor já é o preço Pix (com desconto aplicado) — entra cheio no caixa
+    return [{ data: hoje, valor: valor, bruto: valor, forma: 'Pix', status: 'Realizado' }];
   } else if (forma === '3x') {
     return [{ data: hoje, valor: valor, forma: 'Cartão', parcelas: 3, status: 'Realizado' }];
   } else if (forma === '4x') {
@@ -2728,7 +2732,8 @@ async function saveEditContrato() {
     entrega: document.getElementById('e-entrega').value || null,
     envio: document.getElementById('e-envio').value,
     status: document.getElementById('e-status').value,
-    desconto: parseFloat(document.getElementById('e-desconto').value) || 0
+    desconto: parseFloat(document.getElementById('e-desconto').value) || 0,
+    forma_pag: document.getElementById('e-forma-pag').value
   };
 
   const linhas = document.querySelectorAll('#e-pecas-selecionadas > div');
@@ -2746,7 +2751,9 @@ async function saveEditContrato() {
     valorBruto += precoCalculado * qtd;
   });
   dados.pecas = pecasSel;
-  dados.valor_bruto = Math.max(0, valorBruto - dados.desconto);
+  let valorFinalEdit = Math.max(0, valorBruto - dados.desconto);
+  if (dados.forma_pag === 'pix') valorFinalEdit = round2(valorFinalEdit * (1 - TAXA_PIX_DESC));
+  dados.valor_bruto = valorFinalEdit;
 
   // Coleta os dados da ficha na edição
   dados.ficha_producao = {

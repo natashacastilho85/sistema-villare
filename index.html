@@ -581,7 +581,7 @@
     <div class="header-logo">Villare <span>Atelier</span></div>
     <div style="display:flex;gap:0.6rem">
       <button class="header-btn" onclick="abrirPrecDoCatalogo()" title="Precificação" style="font-size:1.1rem">🌸</button>
-      <button class="header-btn">🔔</button>
+      <button class="header-btn" onclick="abrirCentroNotif()" id="btn-sininho" style="position:relative">🔔<span id="badge-notif" style="display:none;position:absolute;top:0;right:0;background:var(--bordeaux);color:white;border-radius:50%;width:14px;height:14px;font-size:0.55rem;display:flex;align-items:center;justify-content:center;font-family:sans-serif"></span></button>
     </div>
   </header>
 
@@ -1165,6 +1165,43 @@
   </div>
 </div>
 
+<!-- DRAWER CENTRO DE NOTIFICAÇÕES -->
+<div class="drawer-overlay" id="drawer-notif" onclick="closeDrawer('drawer-notif')">
+  <div class="drawer" onclick="event.stopPropagation()" style="max-height:92vh">
+    <div class="drawer-handle"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
+      <div class="drawer-title" style="margin-bottom:0">Notificações</div>
+      <button class="btn-primary" style="width:auto;padding:0.45rem 0.8rem;margin:0;font-size:0.7rem" onclick="abrirNovaNotifManual()">+ Nova</button>
+    </div>
+    <div id="notif-centro-lista"></div>
+    <button class="btn-secondary" onclick="closeDrawer('drawer-notif')" style="margin-top:0.8rem">Fechar</button>
+  </div>
+</div>
+
+<!-- DRAWER NOVA NOTIFICAÇÃO MANUAL -->
+<div class="drawer-overlay" id="drawer-notif-manual" onclick="closeDrawer('drawer-notif-manual')">
+  <div class="drawer" onclick="event.stopPropagation()">
+    <div class="drawer-handle"></div>
+    <div class="drawer-title">Nova notificação</div>
+    <div class="field-group">
+      <label class="field-label">Mensagem</label>
+      <textarea class="field-input" id="notif-manual-texto" rows="3" placeholder="Ex: Ligar para fornecedor de resina..."></textarea>
+    </div>
+    <div class="field-row">
+      <div class="field-group">
+        <label class="field-label">Data</label>
+        <input class="field-input" id="notif-manual-data" type="date">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Hora</label>
+        <input class="field-input" id="notif-manual-hora" type="time" value="09:00">
+      </div>
+    </div>
+    <button class="btn-primary" onclick="salvarNotifManual()">Salvar</button>
+    <button class="btn-secondary" onclick="closeDrawer('drawer-notif-manual')">Cancelar</button>
+  </div>
+</div>
+
 <!-- DRAWER DETALHE -->
 <div class="drawer-overlay" id="drawer-detail" onclick="fecharDetalheContrato()">
   <div class="drawer" onclick="event.stopPropagation()" id="detail-body"></div>
@@ -1448,6 +1485,7 @@ async function initApp() {
   renderAll();
   // Ativa push notifications em background
   if (typeof ativarPushAposLogin === 'function') ativarPushAposLogin();
+  carregarBadgeNotif();
   // Configura visibilidade inicial do form de novo contrato
   if (typeof onFormaPagChange === 'function') onFormaPagChange('pix');
 }
@@ -4502,6 +4540,141 @@ if ('serviceWorker' in navigator) {
 }
 
 // Push ativado em initApp() via ativarPushAposLogin()
+
+// ── CENTRO DE NOTIFICAÇÕES ──
+async function abrirCentroNotif() {
+  openDrawer('drawer-notif');
+  await renderCentroNotif();
+}
+
+async function renderCentroNotif() {
+  const el = document.getElementById('notif-centro-lista');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--muted);font-size:0.8rem">Carregando...</div>';
+
+  try {
+    // Busca últimas 10 notificações automáticas do push_log
+    const auto = await sbFetch('push_log?order=created_at.desc&limit=10');
+    // Busca notificações manuais pendentes e disparadas
+    const manuais = await sbFetch('notif_manuais?order=data_hora.desc&limit=20');
+
+    const todas = [
+      ...( auto || []).map(r => ({
+        id: r.id,
+        tipo: 'auto',
+        titulo: r.chave,
+        data: r.data,
+        hora: null,
+        texto: _labelChave(r.chave),
+      })),
+      ...(manuais || []).map(r => ({
+        id: r.id,
+        tipo: 'manual',
+        titulo: 'Lembrete',
+        data: r.data_hora ? r.data_hora.slice(0,10) : '',
+        hora: r.data_hora ? r.data_hora.slice(11,16) : '',
+        texto: r.texto,
+        disparada: r.disparada,
+      }))
+    ].sort((a,b) => (b.data+b.hora) > (a.data+a.hora) ? 1 : -1).slice(0,15);
+
+    if (!todas.length) {
+      el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--muted-light);font-style:italic;font-size:0.85rem">Nenhuma notificação ainda</div>';
+      return;
+    }
+
+    el.innerHTML = todas.map(n => {
+      const dataFmt = n.data ? n.data.split('-').reverse().join('/') : '';
+      const horaFmt = n.hora ? ' · ' + n.hora : '';
+      const badge = n.tipo === 'manual'
+        ? `<span style="font-size:0.6rem;padding:0.15rem 0.45rem;border-radius:20px;background:rgba(107,143,113,0.15);color:var(--sage);border:1px solid rgba(107,143,113,0.3)">${n.disparada ? '✓ enviada' : '⏰ agendada'}</span>`
+        : `<span style="font-size:0.6rem;padding:0.15rem 0.45rem;border-radius:20px;background:rgba(184,134,42,0.1);color:var(--brown);border:1px solid rgba(184,134,42,0.2)">automática</span>`;
+      return `<div style="display:flex;align-items:flex-start;gap:0.6rem;padding:0.75rem 0;border-bottom:1px solid rgba(184,134,42,0.08)">
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.2rem">${badge}<span style="font-size:0.65rem;color:var(--muted)">${dataFmt}${horaFmt}</span></div>
+          <div style="font-size:0.88rem;color:var(--dark);line-height:1.4">${n.texto}</div>
+        </div>
+        <button onclick="excluirNotif('${n.tipo}',${n.id})" style="background:none;border:none;color:var(--muted-light);font-size:1.1rem;cursor:pointer;padding:0.2rem;flex-shrink:0;line-height:1">×</button>
+      </div>`;
+    }).join('');
+
+    // Atualiza badge do sininho
+    const pendentes = (manuais || []).filter(r => !r.disparada).length;
+    const badge = document.getElementById('badge-notif');
+    if (badge) {
+      if (pendentes > 0) { badge.textContent = pendentes; badge.style.display = 'flex'; }
+      else badge.style.display = 'none';
+    }
+
+  } catch(e) {
+    el.innerHTML = `<div style="color:var(--bordeaux);font-size:0.8rem;padding:1rem">Erro ao carregar: ${e.message}</div>`;
+  }
+}
+
+function _labelChave(chave) {
+  if (!chave) return chave;
+  if (chave.startsWith('7d-')) return '💍 Casamento em 7 dias';
+  if (chave.startsWith('reserva20-')) return '💰 Lembrete reserva 20 dias';
+  if (chave.startsWith('envio1du-')) return '📦 Confirmação de envio do buquê';
+  if (chave.startsWith('buque3du-')) return '🌸 Buquê chegou? (3 dias úteis)';
+  if (chave.startsWith('buque5du-')) return '🌸 Buquê chegou? (5 dias úteis)';
+  if (chave.startsWith('buque8du-')) return '🌸 Buquê chegou? (8 dias úteis)';
+  if (chave.startsWith('prazo20-')) return '⏰ Prazo de produção — faltam 20 dias';
+  return chave;
+}
+
+async function excluirNotif(tipo, id) {
+  if (!confirm('Apagar esta notificação?')) return;
+  try {
+    if (tipo === 'auto') {
+      await sbFetch('push_log?id=eq.'+id, { method:'DELETE', headers:{'Prefer':''} });
+    } else {
+      await sbFetch('notif_manuais?id=eq.'+id, { method:'DELETE', headers:{'Prefer':''} });
+    }
+    await renderCentroNotif();
+  } catch(e) { alert('Erro ao apagar: '+e.message); }
+}
+
+function abrirNovaNotifManual() {
+  const hoje = new Date().toISOString().slice(0,10);
+  document.getElementById('notif-manual-texto').value = '';
+  document.getElementById('notif-manual-data').value = hoje;
+  document.getElementById('notif-manual-hora').value = '09:00';
+  openDrawer('drawer-notif-manual');
+}
+
+async function salvarNotifManual() {
+  const texto = document.getElementById('notif-manual-texto').value.trim();
+  const data = document.getElementById('notif-manual-data').value;
+  const hora = document.getElementById('notif-manual-hora').value;
+  if (!texto) { alert('Escreva a mensagem.'); return; }
+  if (!data || !hora) { alert('Informe data e hora.'); return; }
+  // Salva como UTC-3 (Brasília)
+  const dataHora = data + 'T' + hora + ':00-03:00';
+  try {
+    await sbInsert('notif_manuais', { texto, data_hora: dataHora, disparada: false });
+    closeDrawer('drawer-notif-manual');
+    await renderCentroNotif();
+    // Atualiza badge
+    const badge = document.getElementById('badge-notif');
+    if (badge) { badge.style.display = 'flex'; badge.textContent = parseInt(badge.textContent||'0')+1; }
+  } catch(e) { alert('Erro ao salvar: '+e.message); }
+}
+
+// Carrega badge ao iniciar
+async function carregarBadgeNotif() {
+  try {
+    const manuais = await sbFetch('notif_manuais?disparada=eq.false&select=id');
+    const badge = document.getElementById('badge-notif');
+    if (!badge) return;
+    if (manuais && manuais.length > 0) {
+      badge.textContent = manuais.length;
+      badge.style.display = 'flex';
+    } else {
+      badge.style.display = 'none';
+    }
+  } catch(e) {}
+}
   
 </script>
 </body>

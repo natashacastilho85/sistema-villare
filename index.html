@@ -2033,13 +2033,13 @@ function contratoCardHTML(c) {
   const pct = c.valorBruto > 0 ? Math.round(pago/c.valorBruto*100) : 0;
   const [y,m,d] = c.casamento.split('-');
   const pecasStr = c.pecas.map(p => {
+    const vTotal = ((parseFloat(p.valor)||0)*(parseInt(p.qtd)||1)).toLocaleString('pt-BR',{minimumFractionDigits:0});
     if (p.qtd > 1) {
       const vUnit = (parseFloat(p.valor)||0).toLocaleString('pt-BR',{minimumFractionDigits:0});
-      const vTotal = ((parseFloat(p.valor)||0)*p.qtd).toLocaleString('pt-BR',{minimumFractionDigits:0});
       return `${p.qtd}× ${p.nome} <span style="font-size:0.6rem;color:var(--muted-light)">R$ ${vUnit}</span> R$ ${vTotal}`;
     }
-    return p.nome;
-  }).join(' · ');
+    return `${p.nome} R$ ${vTotal}`;
+  }).join('<br>');
   const status = statusEfetivo(c);
   const devedor = isDevedor(c);
 
@@ -2757,10 +2757,43 @@ function abrirEdicaoContrato(id) {
 }
 
 function adicionarLinhaPecaEdit() {
+  const pecasOrdenadas = [...pecas].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', {sensitivity:'base'}));
+  let overlay = document.getElementById('modal-sel-peca-edit');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'modal-sel-peca-edit';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(42,26,14,0.45);z-index:9000;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(3px)';
+    document.body.appendChild(overlay);
+  }
+  const itens = pecasOrdenadas.map(p => {
+    const preco = getPrecoPecaCalculado(p.id);
+    const precoStr = preco ? ` — R$ ${preco.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}` : '';
+    return `<div onclick="confirmarPecaEdit(${p.id})" style="padding:0.65rem 1rem;border-bottom:1px solid rgba(184,134,42,0.08);cursor:pointer;font-size:0.9rem;color:var(--dark);display:flex;justify-content:space-between;align-items:center">
+      <span>${p.nome}</span>
+      <span style="color:var(--brown);font-family:'Calibri',serif">${precoStr}</span>
+    </div>`;
+  }).join('');
+  overlay.innerHTML = `
+    <div onclick="event.stopPropagation()" style="background:var(--warm-white);border-radius:16px 16px 0 0;width:100%;max-width:520px;max-height:75vh;overflow-y:auto;padding-bottom:env(safe-area-inset-bottom,0px)">
+      <div style="padding:1rem 1rem 0.5rem;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(184,134,42,0.12)">
+        <span style="font-family:'Calibri',serif;font-size:1.1rem;color:var(--brown)">Escolher peça</span>
+        <button onclick="document.getElementById('modal-sel-peca-edit').remove()" style="background:none;border:none;font-size:1.4rem;color:var(--muted);cursor:pointer;line-height:1">×</button>
+      </div>
+      ${itens || '<div style="padding:1rem;color:var(--muted);font-style:italic">Nenhuma peça cadastrada</div>'}
+    </div>`;
+  overlay.onclick = () => overlay.remove();
+  overlay.style.display = 'flex';
+}
+
+function confirmarPecaEdit(pecaId) {
+  const overlay = document.getElementById('modal-sel-peca-edit');
+  if (overlay) overlay.remove();
+  const p = pecas.find(x => x.id === pecaId);
+  if (!p) return;
   const container = document.getElementById('e-pecas-selecionadas');
   const div = document.createElement('div');
   div.style.cssText = 'display:grid;grid-template-columns:1fr 60px 24px;gap:0.4rem;align-items:center';
-  div.innerHTML = `<select class="field-input" style="padding:0.5rem 0.6rem;font-size:0.82rem">${_optsLinhaPeca()}</select><input class="field-input" type="number" min="1" value="1" style="padding:0.5rem 0.4rem;text-align:center;font-size:0.82rem"><button type="button" onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--bordeaux);font-size:1.2rem;cursor:pointer;padding:0;line-height:1">×</button>`;
+  div.innerHTML = `<select class="field-input" style="padding:0.5rem 0.6rem;font-size:0.82rem">${_optsLinhaPeca(pecaId)}</select><input class="field-input" type="number" min="1" value="1" style="padding:0.5rem 0.4rem;text-align:center;font-size:0.82rem"><button type="button" onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--bordeaux);font-size:1.2rem;cursor:pointer;padding:0;line-height:1">×</button>`;
   container.appendChild(div);
 }
 

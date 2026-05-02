@@ -1194,7 +1194,8 @@
       </div>
       <div class="field-group">
         <label class="field-label">Hora</label>
-        <input class="field-input" id="notif-manual-hora" type="time" value="09:00">
+        <input class="field-input" id="notif-manual-hora" type="text" placeholder="09:00" maxlength="5"
+          oninput="this.value=this.value.replace(/[^0-9:]/g,'');if(this.value.length===2&&!this.value.includes(':'))this.value+=':'">
       </div>
     </div>
     <button class="btn-primary" onclick="salvarNotifManual()">Salvar</button>

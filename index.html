@@ -1798,16 +1798,17 @@ async function saveContrato() {
     obsGeral: document.getElementById('c-f-obs-geral').value
   };
 
-  // Aplica desconto Pix no valorFinal (noiva paga 7% menos)
+  // valor_bruto = preço de venda (sem desconto — desconto vai só no pagamento)
   let valorFinal = Math.max(0, valorBruto - desconto);
-  if (formaPag === 'pix') valorFinal = round2(valorFinal * (1 - TAXA_PIX_DESC));
-  // Para misto, valor_bruto = o que a noiva paga (pPix + pCartao), não o preço cartão
+  // Para misto, valor_bruto = pPix + pCartao (o que a noiva paga)
   if (formaPag === 'misto') {
     const pPixMisto = parseFloat(document.getElementById('c-pago-pix').value) || 0;
     const pCartaoMisto = parseFloat(document.getElementById('c-pago-cartao').value) || 0;
     valorFinal = round2(pPixMisto + pCartaoMisto);
   }
 
+  // Para pagamentos iniciais, passa o valorFinal SEM desconto Pix —
+  // gerarPagamentosIniciais aplica o desconto só no campo valor (caixa)
   const pagamentosIni = gerarPagamentosIniciais(formaPag, valorFinal, contrato);
 
   try {
@@ -1829,7 +1830,8 @@ function gerarPagamentosIniciais(forma, valor, dataContrato) {
   // Usa a data do contrato (quando foi assinado), não a data de hoje
   const data = dataContrato || new Date().toISOString().split('T')[0];
   if (forma === 'pix') {
-    return [{ data, valor: valor, bruto: valor, forma: 'Pix', status: 'Realizado' }];
+    const pixLiq = round2(valor * (1 - TAXA_PIX_DESC));
+    return [{ data, valor: pixLiq, bruto: valor, forma: 'Pix', status: 'Realizado' }];
   } else if (forma === '3x') {
     const liq3x = round2(valor * (1 - TAXA_CARTAO_3X));
     return [{ data, valor: liq3x, bruto: valor, forma: 'Cartão', parcelas: 3, status: 'Realizado' }];
@@ -2874,7 +2876,7 @@ async function saveEditContrato() {
   });
   dados.pecas = pecasSel;
   let valorFinalEdit = Math.max(0, valorBruto - dados.desconto);
-  if (dados.forma_pag === 'pix') valorFinalEdit = round2(valorFinalEdit * (1 - TAXA_PIX_DESC));
+  // valor_bruto = preço de venda sem desconto (desconto vai só no pagamento)
   if (dados.forma_pag === 'misto') {
     const pPixEdit = parseFloat(document.getElementById('e-pago-pix').value) || 0;
     const pCartaoEdit = parseFloat(document.getElementById('e-pago-cartao').value) || 0;
@@ -2897,11 +2899,36 @@ async function saveEditContrato() {
 
   // Atualiza pagamentos — usa data do contrato, não data da edição
   // Para pix/3x/4x/reserva: só regenera se não houver pagamentos (foram excluídos)
-  if (dados.forma_pag !== 'misto' && (!c.pagamentos || c.pagamentos.length === 0)) {
+  const pagsExistentes = c.pagamentos || [];
+  const totalBrutoExistente = pagsExistentes.reduce((s,p) => {
+    const b = (p.bruto !== undefined && p.bruto !== null) ? parseFloat(p.bruto) : parseFloat(p.valor);
+    return s + (b || 0);
+  }, 0);
+
+  if (dados.forma_pag !== 'misto' && pagsExistentes.length === 0) {
+    // Sem pagamentos — regenera do zero
     const pagamentosReg = gerarPagamentosIniciais(dados.forma_pag, dados.valor_bruto, dados.contrato);
     if (pagamentosReg.length > 0) {
       dados.pagamentos = pagamentosReg;
       dados.pago = round2(pagamentosReg.reduce((s,p) => s+(parseFloat(p.valor)||0), 0));
+    }
+  } else if (dados.forma_pag !== 'misto' && dados.valor_bruto > totalBrutoExistente + 0.01) {
+    // Tem pagamentos mas o novo valor é maior (adicionou peça) — adiciona diferença
+    const diff = round2(dados.valor_bruto - totalBrutoExistente);
+    const dataContrato = dados.contrato;
+    let novoPag;
+    if (dados.forma_pag === 'pix') {
+      novoPag = { data: dataContrato, valor: round2(diff * (1 - TAXA_PIX_DESC)), bruto: diff, forma: 'Pix', status: 'Realizado' };
+    } else if (dados.forma_pag === '3x') {
+      novoPag = { data: dataContrato, valor: round2(diff * (1 - TAXA_CARTAO_3X)), bruto: diff, forma: 'Cartão', parcelas: 3, status: 'Realizado' };
+    } else if (dados.forma_pag === '4x') {
+      novoPag = { data: dataContrato, valor: diff, bruto: diff, forma: 'Cartão', parcelas: 4, status: 'Realizado' };
+    } else if (dados.forma_pag === 'reserva') {
+      novoPag = { data: dataContrato, valor: diff, bruto: diff, forma: 'Pix', status: 'Realizado' };
+    }
+    if (novoPag) {
+      dados.pagamentos = [...pagsExistentes, novoPag];
+      dados.pago = round2(dados.pagamentos.reduce((s,p) => s+(parseFloat(p.valor)||0), 0));
     }
   }
   if (dados.forma_pag === 'misto') {

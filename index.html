@@ -2882,7 +2882,7 @@ function openDetail(id) {
       <div style="font-size:0.65rem;color:var(--muted);margin-top:0.15rem">${c.cidade} · ${c.estado}${telLimpo?' · '+c.telefone:''}</div></div>
       <div style="display:flex;flex-direction:column;gap:0.3rem;align-items:flex-end">
         ${devedor?`<span style="font-size:0.55rem;letter-spacing:0.08em;padding:0.22rem 0.55rem;border-radius:20px;font-weight:600;white-space:nowrap;background:var(--bordeaux);color:white;text-transform:uppercase">⚠ Devedor</span>`:''}
-        <div class="status-badge s-${c.status}">${c.status}</div>
+        <div class="status-badge s-${getStatus(c)}">${getStatus(c)}</div>
       </div>
     </div>
     <div class="detail-section">

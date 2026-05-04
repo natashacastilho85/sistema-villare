@@ -691,6 +691,71 @@
     <!-- COMPARATIVOS -->
     <div class="screen" id="screen-comparativos">
 
+      <!-- PESQUISA / RELATÓRIO -->
+      <div class="section-title">Pesquisar contratos</div>
+      <div style="background:white;border:1px solid rgba(184,134,42,0.16);border-radius:10px;padding:1rem;margin-bottom:1.2rem;box-shadow:0 1px 6px rgba(42,26,14,0.06)">
+
+        <!-- Tipo de filtro -->
+        <div style="display:flex;gap:0.5rem;margin-bottom:0.85rem">
+          <button id="rel-btn-mes" onclick="relTipoFiltro('mes')"
+            style="flex:1;padding:0.45rem 0;border-radius:20px;border:1.5px solid var(--gold);background:var(--gold);color:white;font-family:'Calibri',sans-serif;font-size:0.82rem;cursor:pointer">
+            Por mês
+          </button>
+          <button id="rel-btn-periodo" onclick="relTipoFiltro('periodo')"
+            style="flex:1;padding:0.45rem 0;border-radius:20px;border:1.5px solid var(--gold);background:white;color:var(--gold);font-family:'Calibri',sans-serif;font-size:0.82rem;cursor:pointer">
+            Por período
+          </button>
+        </div>
+
+        <!-- Filtro por mês -->
+        <div id="rel-filtro-mes" style="display:flex;gap:0.5rem;margin-bottom:0.75rem;align-items:center">
+          <select id="rel-mes" style="flex:1;padding:0.45rem 0.6rem;border:1px solid rgba(184,134,42,0.35);border-radius:8px;font-family:'Calibri',sans-serif;font-size:0.85rem;background:var(--cream);color:var(--dark)">
+            <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
+            <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
+            <option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
+            <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+          </select>
+          <select id="rel-ano" style="width:90px;padding:0.45rem 0.6rem;border:1px solid rgba(184,134,42,0.35);border-radius:8px;font-family:'Calibri',sans-serif;font-size:0.85rem;background:var(--cream);color:var(--dark)">
+            <option>2024</option><option>2025</option><option selected>2026</option><option>2027</option>
+          </select>
+        </div>
+
+        <!-- Filtro por período -->
+        <div id="rel-filtro-periodo" style="display:none;gap:0.5rem;margin-bottom:0.75rem;align-items:center">
+          <input type="date" id="rel-de" style="flex:1;padding:0.45rem 0.6rem;border:1px solid rgba(184,134,42,0.35);border-radius:8px;font-family:'Calibri',sans-serif;font-size:0.85rem;background:var(--cream);color:var(--dark)">
+          <span style="color:var(--muted);font-size:0.8rem">até</span>
+          <input type="date" id="rel-ate" style="flex:1;padding:0.45rem 0.6rem;border:1px solid rgba(184,134,42,0.35);border-radius:8px;font-family:'Calibri',sans-serif;font-size:0.85rem;background:var(--cream);color:var(--dark)">
+        </div>
+
+        <!-- O que pesquisar -->
+        <div style="display:flex;gap:0.5rem;margin-bottom:0.85rem">
+          <button id="rel-btn-cas" onclick="relTipoBusca('casamento')"
+            style="flex:1;padding:0.4rem 0;border-radius:20px;border:1.5px solid var(--brown-light);background:var(--brown-light);color:white;font-family:'Calibri',sans-serif;font-size:0.8rem;cursor:pointer">
+            Data do casamento
+          </button>
+          <button id="rel-btn-fec" onclick="relTipoBusca('fechamento')"
+            style="flex:1;padding:0.4rem 0;border-radius:20px;border:1.5px solid var(--brown-light);background:white;color:var(--brown-light);font-family:'Calibri',sans-serif;font-size:0.8rem;cursor:pointer">
+            Data de fechamento
+          </button>
+        </div>
+
+        <button onclick="gerarRelatorio()"
+          style="width:100%;padding:0.55rem;border-radius:8px;border:none;background:var(--bordeaux);color:white;font-family:'Calibri',sans-serif;font-size:0.9rem;cursor:pointer;letter-spacing:0.03em">
+          🔍 Pesquisar
+        </button>
+      </div>
+
+      <!-- Resultado -->
+      <div id="rel-resultado" style="display:none">
+        <div id="rel-titulo" style="font-family:'Calibri',serif;font-size:1rem;color:var(--brown);margin-bottom:0.6rem;font-style:italic"></div>
+
+        <!-- Resumo financeiro -->
+        <div id="rel-resumo" style="display:flex;gap:0.6rem;margin-bottom:0.9rem;flex-wrap:wrap"></div>
+
+        <!-- Lista de contratos -->
+        <div id="rel-lista"></div>
+      </div>
+
       <!-- Noivas -->
       <div class="section-title">Noivas por mês</div>
       <div style="overflow-x:auto;border-radius:8px;border:1px solid rgba(184,134,42,0.15);background:white;box-shadow:0 1px 6px rgba(42,26,14,0.05);margin-bottom:0.2rem">
@@ -1530,6 +1595,7 @@ function renderAll() {
   renderFinanceiro();
   renderGastos();
   renderComparativos();
+  initRelatorio();
   renderCatalogo();
 }
 
@@ -1726,21 +1792,25 @@ window.addEventListener('popstate', () => {
     }
     if (_drawerStack.length === 0) _zDrawerAtual = 200;
     else _zDrawerAtual = Math.max(200, _zDrawerAtual - 10);
-    // Se fechou a ficha de produção, reabre o detalhe do contrato SEM novo pushState
+    // Se fechou a ficha de produção, reabre o detalhe do contrato
     if (id === 'drawer-ficha' && fichaContratoId) {
-      setTimeout(() => {
-        openDetail(fichaContratoId);
-        // openDetail chama openDrawer que faz pushState — substitui por replaceState
-        // para manter histórico alinhado (1 entrada = 1 drawer aberto)
-        history.replaceState({ villare: 'root' }, '');
-      }, 50);
+      setTimeout(() => openDetail(fichaContratoId), 50);
+      // openDetail → openDrawer já vai fazer pushState, não precisa fazer nada aqui
+      return;
     }
   }
-  history.replaceState({ villare: 'root' }, '');
+  // Sempre garante uma entrada no histórico para o Android não fechar o app
+  history.pushState({ villare: 'root' }, '');
 });
 
 // Ao carregar: estabelece a entrada raiz inicial
-window.addEventListener('load', () => { history.replaceState({ villare: 'root' }, ''); });
+window.addEventListener('load', () => {
+  // Substitui a entrada atual pela raiz base
+  history.replaceState({ villare: 'root' }, '');
+  // Empurra uma entrada de proteção: o popstate vai consumir esta,
+  // e a raiz base abaixo impede o Android de fechar o app
+  history.pushState({ villare: 'root' }, '');
+});
 
 // ── FORMA DE PAGAMENTO ──
 // Regra dos valores que entram no caixa:
@@ -2545,6 +2615,129 @@ function buildCompTable(theadId, tbodyId, tfootId, anos, campo, fmtFn) {
   });
   tfoot += '</tr>';
   document.getElementById(tfootId).innerHTML = tfoot;
+}
+
+// ── RELATÓRIO / PESQUISA ──
+var _relTipoFiltro = 'mes';
+var _relTipoBusca  = 'casamento';
+
+function relTipoFiltro(tipo) {
+  _relTipoFiltro = tipo;
+  document.getElementById('rel-filtro-mes').style.display     = tipo === 'mes'     ? 'flex' : 'none';
+  document.getElementById('rel-filtro-periodo').style.display = tipo === 'periodo' ? 'flex' : 'none';
+  var btnMes = document.getElementById('rel-btn-mes');
+  var btnPer = document.getElementById('rel-btn-periodo');
+  btnMes.style.background = tipo === 'mes'     ? 'var(--gold)' : 'white';
+  btnMes.style.color      = tipo === 'mes'     ? 'white'       : 'var(--gold)';
+  btnPer.style.background = tipo === 'periodo' ? 'var(--gold)' : 'white';
+  btnPer.style.color      = tipo === 'periodo' ? 'white'       : 'var(--gold)';
+}
+
+function relTipoBusca(tipo) {
+  _relTipoBusca = tipo;
+  var btnCas = document.getElementById('rel-btn-cas');
+  var btnFec = document.getElementById('rel-btn-fec');
+  btnCas.style.background = tipo === 'casamento'  ? 'var(--brown-light)' : 'white';
+  btnCas.style.color      = tipo === 'casamento'  ? 'white' : 'var(--brown-light)';
+  btnFec.style.background = tipo === 'fechamento' ? 'var(--brown-light)' : 'white';
+  btnFec.style.color      = tipo === 'fechamento' ? 'white' : 'var(--brown-light)';
+}
+
+function gerarRelatorio() {
+  var resultado = document.getElementById('rel-resultado');
+  var meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var de, ate, tituloTxt;
+
+  if (_relTipoFiltro === 'mes') {
+    var mes = parseInt(document.getElementById('rel-mes').value);
+    var ano = document.getElementById('rel-ano').value;
+    var mm  = String(mes).padStart(2,'0');
+    de  = ano + '-' + mm + '-01';
+    ate = ano + '-' + mm + '-31';
+    tituloTxt = meses[mes-1] + ' de ' + ano;
+  } else {
+    de  = document.getElementById('rel-de').value;
+    ate = document.getElementById('rel-ate').value;
+    if (!de || !ate) { alert('Preencha as duas datas do período.'); return; }
+    tituloTxt = de.split('-').reverse().join('/') + ' até ' + ate.split('-').reverse().join('/');
+  }
+
+  // Filtra contratos pelo campo escolhido (casamento ou fechamento)
+  var campo = _relTipoBusca === 'casamento' ? 'casamento' : 'contrato';
+  var filtrados = contratos.filter(function(c) {
+    if (c.status === 'Cancelado') return false;
+    var data = (c[campo] || '').slice(0,10);
+    return data >= de && data <= ate;
+  });
+  filtrados.sort(function(a,b) { return (a[campo]||'').localeCompare(b[campo]||''); });
+
+  // Resumo financeiro
+  var totalBruto = 0, totalRecebido = 0, totalSaldo = 0;
+  filtrados.forEach(function(c) {
+    var bruto    = parseFloat(c.valorBruto) || 0;
+    var pago     = totalPago(c);
+    var saldo    = Math.max(0, round2(bruto - pago));
+    totalBruto    += bruto;
+    totalRecebido += pago;
+    totalSaldo    += saldo;
+  });
+
+  function fmtR(v) { return 'R$ ' + v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+  var campoLabel = _relTipoBusca === 'casamento' ? 'casamento' : 'fechamento';
+  document.getElementById('rel-titulo').textContent =
+    filtrados.length + ' contrato' + (filtrados.length !== 1 ? 's' : '') +
+    ' · ' + campoLabel + ' em ' + tituloTxt;
+
+  document.getElementById('rel-resumo').innerHTML = [
+    ['Total', fmtR(totalBruto), 'var(--brown)'],
+    ['Recebido', fmtR(totalRecebido), '#2e7d5e'],
+    ['A receber', fmtR(totalSaldo), totalSaldo > 0 ? 'var(--bordeaux)' : 'var(--muted)'],
+  ].map(function(m) {
+    return '<div style="flex:1;min-width:90px;background:white;border:1px solid rgba(184,134,42,0.18);border-radius:8px;padding:0.55rem 0.7rem;box-shadow:0 1px 4px rgba(42,26,14,0.05)">' +
+      '<div style="font-size:0.7rem;color:var(--muted);font-family:\'Calibri\',sans-serif;letter-spacing:0.04em;text-transform:uppercase">' + m[0] + '</div>' +
+      '<div style="font-family:\'Calibri\',serif;font-size:0.95rem;color:' + m[2] + ';margin-top:0.15rem">' + m[1] + '</div>' +
+    '</div>';
+  }).join('');
+
+  // Lista de contratos
+  if (!filtrados.length) {
+    document.getElementById('rel-lista').innerHTML =
+      '<div style="text-align:center;padding:1.5rem;color:var(--muted);font-style:italic;font-family:\'Calibri\',serif;font-size:0.9rem">Nenhum contrato encontrado.</div>';
+  } else {
+    document.getElementById('rel-lista').innerHTML = filtrados.map(function(c) {
+      var pago   = totalPago(c);
+      var bruto  = parseFloat(c.valorBruto) || 0;
+      var saldo  = Math.max(0, round2(bruto - pago));
+      var quitado = saldo <= 0;
+      var casFmt = (c.casamento||'').split('-').reverse().join('/');
+      var fecFmt = (c.contrato||'').slice(0,10).split('-').reverse().join('/');
+      return '<div onclick="openDetail('+c.id+')" style="background:white;border:1px solid rgba(184,134,42,0.16);border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.55rem;box-shadow:0 1px 4px rgba(42,26,14,0.05);cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:0.5rem">' +
+        '<div>' +
+          '<div style="font-family:\'Calibri\',serif;font-size:1rem;color:var(--dark)">' + c.nome + '</div>' +
+          '<div style="font-size:0.75rem;color:var(--muted);margin-top:0.15rem">💒 ' + casFmt + ' &nbsp;·&nbsp; 📄 ' + fecFmt + '</div>' +
+        '</div>' +
+        '<div style="text-align:right;flex-shrink:0">' +
+          '<div style="font-family:\'Calibri\',serif;font-size:0.95rem;color:var(--brown)">' + fmtR(bruto) + '</div>' +
+          '<div style="font-size:0.75rem;color:' + (quitado ? '#2e7d5e' : 'var(--bordeaux)') + ';margin-top:0.1rem">' +
+            (quitado ? 'Quitado ✓' : 'Saldo ' + fmtR(saldo)) +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  resultado.style.display = 'block';
+  resultado.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Inicializa seletor de mês com o mês atual
+function initRelatorio() {
+  var agora = new Date();
+  var selMes = document.getElementById('rel-mes');
+  var selAno = document.getElementById('rel-ano');
+  if (selMes) selMes.value = String(agora.getMonth() + 1);
+  if (selAno) selAno.value = String(agora.getFullYear());
 }
 
 function renderComparativos() {

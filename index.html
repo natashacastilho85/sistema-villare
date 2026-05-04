@@ -1887,16 +1887,14 @@ function gerarPagamentosIniciais(forma, valor, dataContrato, desconto) {
   else if (forma === '3x') {
     
     if (forma === '3x') {
-  const parcela = round2(valor / 3);
-
-  return [1,2,3].map(i => ({
+  return [{
     data,
-    valor: parcela,
-    bruto: parcela,
+    valor: valor,
+    bruto: valor,
     forma: 'Cartão',
     parcelas: 3,
     status: 'Realizado'
-  }));
+  }];
 }
     
     return [{ data, valor: liq3x, bruto: valor, forma: 'Cartão', parcelas: 3, status: 'Realizado' }];

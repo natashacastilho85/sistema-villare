@@ -2941,12 +2941,21 @@ async function saveEditContrato() {
     valorBruto += precoCalculado * qtd;
   });
   dados.pecas = pecasSel;
-  let valorFinalEdit = valorBruto; // preço cheio de venda
-  if (dados.forma_pag === 'misto') {
-    const pPixEdit = parseFloat(document.getElementById('e-pago-pix').value) || 0;
-    const pCartaoEdit = parseFloat(document.getElementById('e-pago-cartao').value) || 0;
-    valorFinalEdit = round2(pPixEdit + pCartaoEdit);
-  }
+
+let valorComFormaEdit = valorBruto;
+
+if (dados.forma_pag === 'pix') {
+  valorComFormaEdit = valorBruto * 0.93;
+}
+
+if (dados.forma_pag === '3x') {
+  valorComFormaEdit = valorBruto * 0.9299;
+}
+
+let valorFinalEdit = valorComFormaEdit - (parseFloat(dados.desconto) || 0);
+
+if (valorFinalEdit < 0) valorFinalEdit = 0;
+  
   dados.valor_bruto = valorFinalEdit;
 
   // Coleta os dados da ficha na edição

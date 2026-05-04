@@ -2112,7 +2112,7 @@ function contratoCardHTML(c) {
       <div style="text-align:right">
         <div class="contract-value">R$ ${c.valorBruto.toLocaleString('pt-BR',{minimumFractionDigits:0})}</div>
         ${pago > 0 ? `<div style="font-size:0.62rem;color:var(--sage);margin-top:0.05rem">R$ ${pago.toLocaleString('pt-BR',{minimumFractionDigits:0})} pago</div>` : ''}
-        <div class="contract-saldo" style="${saldo<=0?'color:var(--sage)':devedor?'color:var(--bordeaux);font-weight:600':''}">${saldo>0.01?'R$ '+saldo.toFixed(2).replace('.',',')+ ' a receber':'Pago ✓'}</div>
+        <div class="contract-saldo" style="${saldo<=0?'color:var(--sage)':devedor?'color:var(--bordeaux);font-weight:600':''}">${saldo>0.01?'R$ '+saldo.toFixed(2).replace('.',',')+ ' a receber':'Quitado ✓'}</div>
       </div>
     </div>
   </div>`;

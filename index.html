@@ -1871,7 +1871,7 @@ function gerarPagamentosIniciais(forma, valor, dataContrato, desconto) {
 
   return [{
     data,
-    valor: valor,
+    valor: round2(valor - desc),
     bruto: valor,
     forma: 'Pix',
     status: 'Realizado'
@@ -1884,7 +1884,7 @@ function gerarPagamentosIniciais(forma, valor, dataContrato, desconto) {
 
   return [{
     data,
-    valor: valor,
+    valor: round2(valor - desc),
     bruto: valor,
     forma: 'Cartão',
     parcelas: 3,

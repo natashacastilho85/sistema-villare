@@ -2612,7 +2612,23 @@ function openDetail(id) {
   else if (c.formaPag === '3x') valorAPagar = round2(round2(c.valorBruto * (1 - TAXA_CARTAO_3X)) - desconto);
   else if (c.formaPag === '4x') valorAPagar = round2(c.valorBruto - desconto);
   else if (c.formaPag === 'reserva') valorAPagar = c.valorBruto;
-  else if (c.formaPag === 'misto') valorAPagar = pagoNoCaixa; // misto: valor a pagar = o que já foi combinado
+  else if (c.formaPag === 'misto') {
+    if (Array.isArray(c.pagamentos) && c.pagamentos.length) {
+      // Total bruto - taxa pix - taxa cartão - desconto
+      const totalBrutoMisto = c.pagamentos.reduce((s,p) => s + (parseFloat(p.bruto)||parseFloat(p.valor)||0), 0);
+      const taxaPix = c.pagamentos.filter(p=>p.forma==='Pix').reduce((s,p) => {
+        const b = parseFloat(p.bruto)||parseFloat(p.valor)||0;
+        return s + round2(b * TAXA_PIX_DESC);
+      }, 0);
+      const taxaCart = c.pagamentos.filter(p=>p.forma==='Cartão' && (!p.parcelas||p.parcelas<=3)).reduce((s,p) => {
+        const b = parseFloat(p.bruto)||parseFloat(p.valor)||0;
+        return s + round2(b * TAXA_CARTAO_3X);
+      }, 0);
+      valorAPagar = round2(totalBrutoMisto - taxaPix - taxaCart - desconto);
+    } else {
+      valorAPagar = c.valorBruto;
+    }
+  }
   const saldo = round2(valorAPagar - pagoNoCaixa);
   const pct = valorAPagar > 0 ? Math.round(pagoNoCaixa/valorAPagar*100) : 0;
   const fmtData = s => s ? s.split('-').reverse().join('/') : '—';

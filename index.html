@@ -878,9 +878,15 @@
         Mínimo de R$ 300 na entrada. Saldo restante pago da forma que a noiva preferir, quitado até 15 dias antes do casamento.
       </div>
     </div>
-    <div class="field-group">
-      <label class="field-label">Desconto (R$)</label>
-      <input class="field-input" id="c-desconto" type="number" placeholder="0,00" step="0.01" min="0">
+    <div class="field-row">
+      <div class="field-group">
+        <label class="field-label">Desconto (R$)</label>
+        <input class="field-input" id="c-desconto" type="number" placeholder="0,00" step="0.01" min="0">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Acréscimo (R$)</label>
+        <input class="field-input" id="c-acrescimo" type="number" placeholder="0,00" step="0.01" min="0">
+      </div>
     </div>
     <div class="field-group" id="grp-pago-reserva" style="display:none">
       <label class="field-label">Entrada já recebida (R$)</label>
@@ -1054,9 +1060,15 @@
         <option value="misto">Misto (Pix + Cartão)</option>
       </select>
     </div>
-    <div class="field-group">
-      <label class="field-label">Desconto (R$)</label>
-      <input class="field-input" id="e-desconto" type="number" placeholder="0,00" step="0.01" min="0">
+    <div class="field-row">
+      <div class="field-group">
+        <label class="field-label">Desconto (R$)</label>
+        <input class="field-input" id="e-desconto" type="number" placeholder="0,00" step="0.01" min="0">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Acréscimo (R$)</label>
+        <input class="field-input" id="e-acrescimo" type="number" placeholder="0,00" step="0.01" min="0">
+      </div>
     </div>
     <div id="e-grp-pago-reserva" style="display:none">
       <div class="field-group">
@@ -1407,6 +1419,7 @@ function mapContrato(r) {
     valorBruto: parseFloat(r.valor_bruto) || 0, 
     pago: parseFloat(r.pago) || 0,
     desconto: parseFloat(r.desconto) || 0,
+    acrescimo: parseFloat(r.acrescimo) || 0,
     telefone: r.telefone || '',
     pecas: Array.isArray(r.pecas) ? r.pecas : [],
     pagamentos: Array.isArray(r.pagamentos) ? r.pagamentos : [],
@@ -1842,6 +1855,7 @@ async function saveContrato() {
   const telefone = document.getElementById('c-telefone').value;
   const formaPag = document.getElementById('forma-pag-select').value;
   const desconto = round2(parseFloat(document.getElementById('c-desconto').value) || 0);
+  const acrescimo = round2(parseFloat(document.getElementById('c-acrescimo').value) || 0);
 
   const linhas = document.querySelectorAll('#pecas-selecionadas > div');
   const pecasSel = [];
@@ -1878,7 +1892,7 @@ async function saveContrato() {
   try {
     const [novoContrato] = await sbInsert('contratos', {
       nome, status, casamento, contrato, cidade, estado, envio, telefone,
-      forma_pag: formaPag, valor_bruto: valorFinal, desconto, pecas: pecasSel,
+      forma_pag: formaPag, valor_bruto: valorFinal, desconto, acrescimo, pecas: pecasSel,
       pagamentos: pagamentosIni, ficha_producao: ficha
     });
     const novoMapeado = mapContrato(novoContrato);
@@ -2127,14 +2141,16 @@ function contratoCardHTML(c) {
   const pago = totalPago(c);
   // Calcula valorAPagar igual ao detalhe (para saldo correto no card)
   const desc = parseFloat(c.desconto)||0;
-  let valorAPagarCard = c.valorBruto;
-  if (c.formaPag === 'pix') valorAPagarCard = round2(round2(c.valorBruto * (1 - TAXA_PIX_DESC)) - desc);
-  else if (c.formaPag === '3x') valorAPagarCard = round2(round2(c.valorBruto * (1 - TAXA_CARTAO_3X)) - desc);
-  else if (c.formaPag === '4x') valorAPagarCard = round2(c.valorBruto - desc);
+  const acr = parseFloat(c.acrescimo)||0;
+  const baseCard = round2(c.valorBruto + acr);
+  let valorAPagarCard = baseCard;
+  if (c.formaPag === 'pix') valorAPagarCard = round2(round2(baseCard * (1 - TAXA_PIX_DESC)) - desc);
+  else if (c.formaPag === '3x') valorAPagarCard = round2(round2(baseCard * (1 - TAXA_CARTAO_3X)) - desc);
+  else if (c.formaPag === '4x') valorAPagarCard = round2(baseCard - desc);
   else if (c.formaPag === 'misto') {
     const taxaPix = (c.pagamentos||[]).filter(p=>p.forma==='Pix').reduce((s,p)=>s+round2((parseFloat(p.bruto)||parseFloat(p.valor)||0)*TAXA_PIX_DESC),0);
     const taxaCart = (c.pagamentos||[]).filter(p=>p.forma==='Cartão'&&(!p.parcelas||p.parcelas<=3)).reduce((s,p)=>s+round2((parseFloat(p.bruto)||parseFloat(p.valor)||0)*TAXA_CARTAO_3X),0);
-    valorAPagarCard = round2(c.valorBruto - taxaPix - taxaCart - desc);
+    valorAPagarCard = round2(baseCard - taxaPix - taxaCart - desc);
   }
   const saldo = round2(valorAPagarCard - pago);
   const pct = valorAPagarCard > 0 ? Math.round(pago/valorAPagarCard*100) : 0;
@@ -2810,11 +2826,13 @@ function openDetail(id) {
   const pagoNoCaixa = totalPago(c); // o que a noiva pagou (após taxa e desconto)
   // Calcula o valor que a noiva deveria pagar (para saldo correto)
   const desconto = parseFloat(c.desconto) || 0;
-  let valorAPagar = c.valorBruto;
-  if (c.formaPag === 'pix') valorAPagar = round2(round2(c.valorBruto * (1 - TAXA_PIX_DESC)) - desconto);
-  else if (c.formaPag === '3x') valorAPagar = round2(round2(c.valorBruto * (1 - TAXA_CARTAO_3X)) - desconto);
-  else if (c.formaPag === '4x') valorAPagar = round2(c.valorBruto - desconto);
-  else if (c.formaPag === 'reserva') valorAPagar = c.valorBruto;
+  const acrescimo = parseFloat(c.acrescimo) || 0;
+  const baseCalc = round2(c.valorBruto + acrescimo);
+  let valorAPagar = baseCalc;
+  if (c.formaPag === 'pix') valorAPagar = round2(round2(baseCalc * (1 - TAXA_PIX_DESC)) - desconto);
+  else if (c.formaPag === '3x') valorAPagar = round2(round2(baseCalc * (1 - TAXA_CARTAO_3X)) - desconto);
+  else if (c.formaPag === '4x') valorAPagar = round2(baseCalc - desconto);
+  else if (c.formaPag === 'reserva') valorAPagar = baseCalc;
   else if (c.formaPag === 'misto') {
     // Misto: valor_bruto = preço cheio das peças
     // Valor a pagar = valor_bruto - taxas dos pagamentos já feitos - desconto
@@ -2826,7 +2844,7 @@ function openDetail(id) {
       const b = parseFloat(p.bruto)||parseFloat(p.valor)||0;
       return s + round2(b * TAXA_CARTAO_3X);
     }, 0);
-    valorAPagar = round2(c.valorBruto - taxaPix - taxaCart - desconto);
+    valorAPagar = round2(baseCalc - taxaPix - taxaCart - desconto);
   }
   const saldo = round2(valorAPagar - pagoNoCaixa);
   const pct = valorAPagar > 0 ? Math.round(pagoNoCaixa/valorAPagar*100) : 0;
@@ -2939,6 +2957,10 @@ function openDetail(id) {
         if (desc > 0) {
           linhas += `<div class="detail-row"><span class="dl" style="color:var(--muted)">Desconto</span><span class="dv" style="color:var(--bordeaux)">− ${fmtR(desc)}</span></div>`;
         }
+        const acr = parseFloat(c.acrescimo) || 0;
+        if (acr > 0) {
+          linhas += `<div class="detail-row"><span class="dl" style="color:var(--muted)">Acréscimo</span><span class="dv" style="color:var(--sage)">+ ${fmtR(acr)}</span></div>`;
+        }
         linhas += `<div class="detail-row" style="border-top:1px solid rgba(184,134,42,0.15);padding-top:0.4rem;margin-top:0.2rem">
           <span class="dl" style="color:var(--dark);font-weight:600">Valor a pagar</span>
           <span class="dv" style="color:var(--brown);font-family:'Calibri',serif;font-size:1.1rem">R$ ${valorAPagar.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
@@ -2994,6 +3016,7 @@ function abrirEdicaoContrato(id) {
   document.getElementById('e-status').value = c.status || 'Reserva';
   document.getElementById('e-forma-pag').value = c.formaPag || 'pix';
   document.getElementById('e-desconto').value = c.desconto || '';
+  document.getElementById('e-acrescimo').value = c.acrescimo || '';
 
   // Preencher campos de pagamento conforme forma
   // Pega o "primeiro pagamento" (entrada inicial) — assume que é o que foi gerado no cadastro
@@ -3117,6 +3140,7 @@ async function saveEditContrato() {
     envio: document.getElementById('e-envio').value,
     status: document.getElementById('e-status').value,
     desconto: round2(parseFloat(document.getElementById('e-desconto').value) || 0),
+    acrescimo: round2(parseFloat(document.getElementById('e-acrescimo').value) || 0),
     forma_pag: document.getElementById('e-forma-pag').value
   };
 

@@ -5102,7 +5102,6 @@ function _labelChave(chave) {
 }
 
 async function excluirNotif(tipo, id) {
-  if (!confirm('Apagar esta notificação?')) return;
   try {
     if (tipo === 'auto') {
       await sbFetch('push_log?id=eq.'+id, { method:'DELETE', headers:{'Prefer':''} });

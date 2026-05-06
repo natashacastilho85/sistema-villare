@@ -4359,6 +4359,7 @@ function renderPrecCard(p, d, valorHora, custoFixoHora, cardIdx) {
     simularLucro(pecaId, valorSimulado, d.custoTotalReal || 0);
   }
   
+  salvarPrecLocal();
   renderCatalogo();
 }
 
@@ -4366,6 +4367,7 @@ function atualizarMatPrec(pecaId, idx, val) {
   const d = getPrecPeca(pecaId);
   d.materiais[idx].valor = parseFloat(val) || 0;
   recalcularCard(pecaId);
+  salvarPrecLocal();
   renderCatalogo();
 }
 
@@ -4470,6 +4472,7 @@ function removerMatPrec(pecaId, idx) {
   const cardIdx = pecas.findIndex(x => x.id === pecaId);
   const p = pecas.find(x => x.id === pecaId);
   document.getElementById('prec-card-' + pecaId).outerHTML = renderPrecCard(p, d, getValorHora(), getCustoFixoPorHora(), cardIdx);
+  salvarPrecLocal();
 }
 
 function adicionarMatPrec(pecaId) {
@@ -4873,7 +4876,7 @@ function confirmarAddMaterial() {
   const p = pecas.find(x => x.id === matModalPecaId);
   const card = document.getElementById('prec-card-' + matModalPecaId);
   if (card && p) card.outerHTML = renderPrecCard(p, d, getValorHora(), getCustoFixoPorHora(), cardIdx);
-
+  salvarPrecLocal();
   closeModalSelMat();
 }
 
@@ -4889,7 +4892,7 @@ function addMaterialManual() {
   const p = pecas.find(x => x.id === matModalPecaId);
   const card = document.getElementById('prec-card-' + matModalPecaId);
   if (card && p) card.outerHTML = renderPrecCard(p, d, getValorHora(), getCustoFixoPorHora(), cardIdx);
-
+  salvarPrecLocal();
   closeModalSelMat();
 }
 

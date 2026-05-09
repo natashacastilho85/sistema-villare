@@ -4116,23 +4116,13 @@ function atualizarTabelaResumo() {
   const valorHora = getValorHora();
   const custoFixoHora = getCustoFixoPorHora();
   
+  const tarifaCartao = getTarifaCartao();
   const resumoOrdenado = pecas
     .filter(p => getPrecPeca(p.id).exibirCatalogo !== false)
     .map(p => {
-      const d = getPrecPeca(p.id);
-      const mins = d.tempo || getTotalProcessosMins() || 60;
-      const sal = valorHora * (mins / 60);
-      const cf  = custoFixoHora * (mins / 60);
-      const perdaResina = (d.perdaResina ?? 5) / 100;
-      const materiaisComPerda = d.materiais.map(m => {
-        if ((m.nome || '').toLowerCase().includes('resina') && perdaResina > 0) {
-          return { ...m, valor: (parseFloat(m.valor) || 0) * (1 + perdaResina) };
-        }
-        return m;
-      });
-      const r = calcPrec(materiaisComPerda, d.precoFixado || null, sal, cf);
-      // CORREÇÃO: Adicionamos o 'id: p.id' aqui para o clique funcionar
-      return { id: p.id, nome: p.nome, precoCartao: r.precoCartao, precoBase: r.precoBase };
+      const precoCartao = getPrecoPecaCalculado(p.id) || 0;
+      const precoBase = precoCartao > 0 ? Math.round(precoCartao * (1 - tarifaCartao) * 100) / 100 : 0;
+      return { id: p.id, nome: p.nome, precoCartao, precoBase };
     }).sort((a, b) => a.precoCartao - b.precoCartao);
     
   let html = '<div class="prec-resumo-card">';
